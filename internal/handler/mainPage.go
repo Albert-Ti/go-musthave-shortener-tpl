@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -47,8 +48,13 @@ func MainPage(urls *model.ShortenedUrls) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 
-			inputUrl := r.FormValue("url")
-			shortUrl, err := createShortenedUrl(urls, inputUrl)
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Не удалось получить тело запроса", http.StatusBadRequest)
+				return
+			}
+
+			shortUrl, err := createShortenedUrl(urls, string(body))
 
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
