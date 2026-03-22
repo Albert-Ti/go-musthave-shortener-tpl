@@ -4,16 +4,17 @@ import (
 	"net/http"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 )
 
 func main() {
-	urls := &handler.ShortenedUrls{
+	urls := &model.ShortenedUrls{
 		List:  map[uint]string{},
 		Count: 1,
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", http.HandlerFunc(handler.MainPage(urls)))
+	mux.HandleFunc("/", handler.MainPage(urls))
 
 	err := http.ListenAndServe("localhost:8080", mux)
 
