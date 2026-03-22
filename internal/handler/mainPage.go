@@ -2,7 +2,6 @@ package handler
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -81,20 +80,17 @@ func MainPage(urls *ShortenedUrls) http.HandlerFunc {
 			fullUrl := inputUrl + "/" + shortUrl
 			w.Write([]byte(fullUrl))
 		} else {
-			v := r.URL.Query().Get("key")
-			fmt.Println(v)
-			if v == "" {
-				http.Error(w, "Требуется ключ для получения ссылки", http.StatusBadRequest)
-				return
-			}
 
-			url := urls.getUrl(v)
+			param := strings.TrimPrefix(r.URL.Path, "/")
+
+			url := urls.getUrl(param)
 			if url == "" {
 				http.Error(w, "Ссылка по данному ключу не найдена", http.StatusBadRequest)
 				return
 			}
 
-			w.Write([]byte(url))
+			w.Header().Set("Location", url)
+			http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 		}
 	}
 }
