@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -57,7 +58,12 @@ func MainPage(urls *model.ShortenedUrls) http.HandlerFunc {
 			w.Header().Set("Content-Type", "text/plain")
 			w.WriteHeader(http.StatusCreated)
 
-			fullUrl := inputUrl + "/" + shortUrl
+			schema := "http"
+			if r.TLS != nil {
+				schema = "https"
+			}
+
+			fullUrl := fmt.Sprintf("%s://%s/%s", schema, r.Host, shortUrl)
 			w.Write([]byte(fullUrl))
 		} else {
 
