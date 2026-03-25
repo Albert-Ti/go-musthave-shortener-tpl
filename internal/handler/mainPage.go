@@ -53,6 +53,7 @@ func MainPage(urls *model.ShortenedUrls) http.HandlerFunc {
 				http.Error(w, "Не удалось получить тело запроса", http.StatusBadRequest)
 				return
 			}
+			defer r.Body.Close()
 
 			shortUrl, err := createShortenedUrl(urls, string(body))
 
