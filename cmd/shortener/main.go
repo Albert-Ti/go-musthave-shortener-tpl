@@ -14,7 +14,8 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", handler.MainPage(urls))
+	mux.HandleFunc("/", handler.CreateShortUrl(urls))
+	mux.HandleFunc("/{id}", handler.RedirectById(urls))
 
 	err := http.ListenAndServe("localhost:8080", mux)
 
