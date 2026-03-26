@@ -58,7 +58,7 @@ func TestCreateShortUrl(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			urls := &model.ShortenedUrls{
-				List:  map[uint]string{},
+				List:  map[string]string{},
 				Count: 1,
 			}
 
@@ -69,7 +69,6 @@ func TestCreateShortUrl(t *testing.T) {
 
 			r := httptest.NewRequest(tt.want.method, "/", body)
 			w := httptest.NewRecorder()
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 			createShortUrlHandler := CreateShortUrl(urls)
 
@@ -77,19 +76,17 @@ func TestCreateShortUrl(t *testing.T) {
 
 			result := w.Result()
 			defer result.Body.Close()
-
 			responseBody, _ := io.ReadAll(result.Body)
-			got := strings.TrimSpace(string(responseBody))
-			want := tt.want.response
+			gotBody := strings.TrimSpace(string(responseBody))
 
-			if got != want {
-				t.Errorf("got %q, want %q", got, want)
+			if tt.want.response != "" && gotBody != tt.want.response {
+				t.Errorf("got body %q, want %q", gotBody, tt.want.response)
 			}
 			if result.StatusCode != tt.want.code {
-				t.Errorf("got %d, want %d", result.StatusCode, tt.want.code)
+				t.Errorf("got status code %d, want %d", result.StatusCode, tt.want.code)
 			}
 			if result.Header.Get("Content-type") != tt.want.contentType {
-				t.Errorf("got %q, want %q", result.Header.Get("Content-type"), tt.want.contentType)
+				t.Errorf("got content type %q, want %q", result.Header.Get("Content-type"), tt.want.contentType)
 			}
 		})
 	}

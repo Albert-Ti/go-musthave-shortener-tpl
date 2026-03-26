@@ -18,7 +18,7 @@ func RedirectById(urls *model.ShortenedUrls) http.HandlerFunc {
 
 		url := urls.GetUrl(param)
 		if url == "" {
-			http.Error(w, "Ссылка по данному ключу не найдена", http.StatusBadRequest)
+			http.Error(w, "Url not found", http.StatusBadRequest)
 			return
 		}
 
