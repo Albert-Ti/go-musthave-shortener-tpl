@@ -9,7 +9,7 @@ import (
 
 func main() {
 	urls := &model.ShortenedUrls{
-		List:  map[uint]string{},
+		List:  map[string]string{},
 		Count: 1,
 	}
 

@@ -3,22 +3,18 @@ package model
 import "strconv"
 
 type ShortenedUrls struct {
-	List  map[uint]string
+	List  map[string]string
 	Count uint
 }
 
 func (u *ShortenedUrls) GetUrl(key string) string {
-	for k, v := range u.List {
-		if "key_"+strconv.Itoa(int(k)) == key {
-			return v
-		}
-	}
-	return ""
+	return u.List[key]
 }
-func (u *ShortenedUrls) Set(url string) string {
-	u.List[u.Count] = url
 
-	k := u.Count
+func (u *ShortenedUrls) Set(url string) string {
+	key := "key_" + strconv.Itoa(int(u.Count))
+	u.List[key] = url
 	u.Count++
-	return "key_" + strconv.Itoa(int(k))
+
+	return key
 }
