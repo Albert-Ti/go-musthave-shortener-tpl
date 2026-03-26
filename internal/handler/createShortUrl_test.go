@@ -30,7 +30,7 @@ func TestCreateShortUrl(t *testing.T) {
 				method:      http.MethodPost,
 				code:        http.StatusCreated,
 				response:    "http://example.com/key_1",
-				contentType: "text/plain",
+				contentType: "text/plain; charset=utf-8",
 			},
 		},
 		{
@@ -69,7 +69,7 @@ func TestCreateShortUrl(t *testing.T) {
 
 			r := httptest.NewRequest(tt.want.method, "/", body)
 			w := httptest.NewRecorder()
-			w.Header().Set("Content-Type", "text/plain")
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 			createShortUrlHandler := CreateShortUrl(urls)
 

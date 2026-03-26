@@ -54,7 +54,7 @@ func CreateShortUrl(urls *model.ShortenedUrls) http.HandlerFunc {
 
 		shortUrl := urls.Set(string(body))
 
-		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
 
 		schema := "http"
