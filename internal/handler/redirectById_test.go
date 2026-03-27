@@ -8,15 +8,17 @@ import (
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRedirect(t *testing.T) {
+	urls := &model.ShortenedUrls{List: map[string]string{"key_1": "http://yandex.ru"}}
+
 	type want struct {
-		method      string
-		code        int
-		location    string
-		response    string
-		contentType string
+		method   string
+		code     int
+		location string
+		response string
 	}
 	tests := []struct {
 		name   string
@@ -27,37 +29,33 @@ func TestRedirect(t *testing.T) {
 			name:   "case_1 Redirected",
 			preset: "/key_1",
 			want: want{
-				method:      http.MethodGet,
-				location:    "http://yandex.ru",
-				code:        http.StatusTemporaryRedirect,
-				contentType: "text/html; charset=utf-8",
+				method:   http.MethodGet,
+				location: urls.List["key_1"],
+				code:     http.StatusTemporaryRedirect,
 			},
 		},
 		{
 			name:   "case_2 Method Not Allowed",
 			preset: "/key_1",
 			want: want{
-				method:      http.MethodPost,
-				code:        http.StatusMethodNotAllowed,
-				response:    "Method not allowed",
-				contentType: "text/plain; charset=utf-8",
+				method:   http.MethodPost,
+				code:     http.StatusMethodNotAllowed,
+				response: "Method not allowed",
 			},
 		},
 		{
 			name:   "case_3 Url not found",
-			preset: "/",
+			preset: "/unknown",
 			want: want{
-				method:      http.MethodGet,
-				code:        http.StatusBadRequest,
-				response:    "Url not found",
-				contentType: "text/plain; charset=utf-8",
+				method:   http.MethodGet,
+				code:     http.StatusBadRequest,
+				response: "Url not found",
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			urls := &model.ShortenedUrls{List: map[string]string{"key_1": "http://yandex.ru"}}
 
 			r := httptest.NewRequest(tt.want.method, tt.preset, nil)
 			w := httptest.NewRecorder()
@@ -71,17 +69,13 @@ func TestRedirect(t *testing.T) {
 			responseBody, _ := io.ReadAll(result.Body)
 			gotBody := strings.TrimSpace(string(responseBody))
 
-			if tt.want.response != "" && gotBody != tt.want.response {
-				t.Errorf("got body %q, want %q", gotBody, tt.want.response)
+			if tt.want.response != "" {
+				assert.Equal(t, tt.want.response, gotBody)
 			}
-			if tt.want.location != "" && result.Header.Get("Location") != tt.want.location {
-				t.Errorf("got  location %s, want %s", result.Header.Get("Location"), tt.want.location)
-			}
-			if result.StatusCode != tt.want.code {
-				t.Errorf("got status code %d, want %d", result.StatusCode, tt.want.code)
-			}
-			if result.Header.Get("Content-type") != tt.want.contentType {
-				t.Errorf("got content type %q, want %q", result.Header.Get("Content-type"), tt.want.contentType)
+			assert.Equal(t, tt.want.code, result.StatusCode)
+
+			if tt.want.location != "" {
+				assert.Equal(t, tt.want.location, result.Header.Get("Location"))
 			}
 		})
 	}

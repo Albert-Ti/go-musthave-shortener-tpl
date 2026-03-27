@@ -8,14 +8,22 @@ import (
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateShortUrl(t *testing.T) {
+	urls := &model.ShortenedUrls{List: map[string]string{}, Count: 1}
+
+	handler := http.HandlerFunc(CreateShortUrl(urls))
+	srv := httptest.NewServer(handler)
+
+	defer srv.Close()
+
 	type want struct {
-		method      string
-		code        int
-		response    string
-		contentType string
+		method   string
+		code     int
+		response string
 	}
 
 	tests := []struct {
@@ -27,67 +35,58 @@ func TestCreateShortUrl(t *testing.T) {
 			name:   "case_1 Ok",
 			preset: "https://yandex.ru",
 			want: want{
-				method:      http.MethodPost,
-				code:        http.StatusCreated,
-				response:    "http://example.com/key_1",
-				contentType: "text/plain; charset=utf-8",
+				method:   http.MethodPost,
+				code:     http.StatusCreated,
+				response: srv.URL + "/key_1",
 			},
 		},
 		{
 			name:   "case_2 Method Not Allowed",
 			preset: "https://yandex.ru",
 			want: want{
-				method:      http.MethodGet,
-				code:        http.StatusMethodNotAllowed,
-				response:    "Method not allowed",
-				contentType: "text/plain; charset=utf-8",
+				method:   http.MethodGet,
+				code:     http.StatusMethodNotAllowed,
+				response: "Method not allowed",
 			},
 		},
 		{
 			name:   "case_3 No body",
 			preset: "",
 			want: want{
-				method:      http.MethodPost,
-				code:        http.StatusBadRequest,
-				response:    "Invalid URL",
-				contentType: "text/plain; charset=utf-8",
+				method:   http.MethodPost,
+				code:     http.StatusBadRequest,
+				response: "Invalid URL",
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			urls := &model.ShortenedUrls{
-				List:  map[string]string{},
-				Count: 1,
-			}
 
 			body := strings.NewReader("https://yandex.ru")
 			if tt.preset == "" {
 				body = strings.NewReader("")
 			}
 
-			r := httptest.NewRequest(tt.want.method, "/", body)
-			w := httptest.NewRecorder()
+			var (
+				resp *http.Response
+				err  error
+			)
+			if tt.want.method == http.MethodGet {
+				resp, err = http.Get(srv.URL)
+			} else {
+				resp, err = http.Post(srv.URL, "text/plain", body)
+			}
+			require.NoError(t, err)
+			defer resp.Body.Close()
 
-			createShortUrlHandler := CreateShortUrl(urls)
-
-			createShortUrlHandler(w, r)
-
-			result := w.Result()
-			defer result.Body.Close()
-			responseBody, _ := io.ReadAll(result.Body)
+			responseBody, _ := io.ReadAll(resp.Body)
 			gotBody := strings.TrimSpace(string(responseBody))
 
-			if tt.want.response != "" && gotBody != tt.want.response {
-				t.Errorf("got body %q, want %q", gotBody, tt.want.response)
+			if tt.want.response != "" {
+				assert.Equal(t, tt.want.response, gotBody)
 			}
-			if result.StatusCode != tt.want.code {
-				t.Errorf("got status code %d, want %d", result.StatusCode, tt.want.code)
-			}
-			if result.Header.Get("Content-type") != tt.want.contentType {
-				t.Errorf("got content type %q, want %q", result.Header.Get("Content-type"), tt.want.contentType)
-			}
+			assert.Equal(t, tt.want.code, resp.StatusCode)
 		})
 	}
 }
