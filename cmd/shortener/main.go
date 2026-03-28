@@ -5,6 +5,8 @@ import (
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/chi/v5"
 )
 
 func main() {
@@ -13,11 +15,16 @@ func main() {
 		Count: 1,
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handler.CreateShortUrl(urls))
-	mux.HandleFunc("/{id}", handler.RedirectById(urls))
+	r := chi.NewRouter()
 
-	err := http.ListenAndServe("localhost:8080", mux)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	r.Post("/", handler.CreateShortUrl(urls))
+	r.Get("/{id}", handler.RedirectById(urls))
+
+	err := http.ListenAndServe("localhost:8080", r)
 
 	if err != nil {
 		panic(err)
