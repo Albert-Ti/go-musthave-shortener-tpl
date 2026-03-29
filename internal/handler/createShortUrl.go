@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 )
 
@@ -57,12 +58,8 @@ func CreateShortUrl(urls *model.ShortenedUrls) http.HandlerFunc {
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
 
-		schema := "http"
-		if r.TLS != nil {
-			schema = "https"
-		}
+		fullUrl := fmt.Sprintf("%s/%s", config.FlagBaseURL, shortUrl)
 
-		fullUrl := fmt.Sprintf("%s://%s/%s", schema, r.Host, shortUrl)
 		w.Write([]byte(fullUrl))
 	}
 }

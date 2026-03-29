@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/go-chi/chi/middleware"
@@ -10,6 +12,8 @@ import (
 )
 
 func main() {
+	config.ParseFlag()
+
 	urls := &model.ShortenedUrls{
 		List:  map[string]string{},
 		Count: 1,
@@ -24,7 +28,8 @@ func main() {
 	r.Post("/", handler.CreateShortUrl(urls))
 	r.Get("/{id}", handler.RedirectById(urls))
 
-	err := http.ListenAndServe("localhost:8080", r)
+	fmt.Println("Running server on", config.FlagRunAddr)
+	err := http.ListenAndServe(config.FlagRunAddr, r)
 
 	if err != nil {
 		panic(err)
