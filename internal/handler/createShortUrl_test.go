@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,6 +21,8 @@ func TestCreateShortUrl(t *testing.T) {
 
 	defer srv.Close()
 
+	config.FlagBaseURL = srv.URL
+
 	type want struct {
 		method   string
 		code     int
@@ -32,7 +35,7 @@ func TestCreateShortUrl(t *testing.T) {
 		want   want
 	}{
 		{
-			name:   "case_1 Ok",
+			name:   "case_1 Created",
 			preset: "https://yandex.ru",
 			want: want{
 				method:   http.MethodPost,
