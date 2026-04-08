@@ -8,13 +8,13 @@ import (
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreateShortUrl(t *testing.T) {
-	urls := &model.ShortenedUrls{List: map[string]string{}, Count: 1}
+	urls := &repository.ShortenedUrls{List: map[string]string{}, Count: 1}
 
 	handler := http.HandlerFunc(CreateShortUrl(urls))
 	srv := httptest.NewServer(handler)

@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRedirect(t *testing.T) {
-	urls := &model.ShortenedUrls{List: map[string]string{"key_1": "http://yandex.ru"}}
+	urls := &repository.ShortenedUrls{List: map[string]string{"key_1": "http://yandex.ru"}}
 
 	type want struct {
 		method   string

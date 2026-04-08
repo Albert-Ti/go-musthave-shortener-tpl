@@ -6,7 +6,7 @@ import (
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 )
@@ -14,7 +14,7 @@ import (
 func main() {
 	config.ParseFlag()
 
-	urls := &model.ShortenedUrls{
+	urls := &repository.ShortenedUrls{
 		List:  map[string]string{},
 		Count: 1,
 	}

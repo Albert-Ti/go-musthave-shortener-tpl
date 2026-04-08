@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 )
 
-func RedirectById(urls *model.ShortenedUrls) http.HandlerFunc {
+func RedirectById(urls *repository.ShortenedUrls) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
