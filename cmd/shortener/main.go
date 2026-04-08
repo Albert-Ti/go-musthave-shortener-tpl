@@ -28,8 +28,8 @@ func main() {
 	r.Post("/", handler.CreateShortUrl(urls))
 	r.Get("/{id}", handler.RedirectById(urls))
 
-	fmt.Println("Running server on", config.FlagRunAddr)
-	err := http.ListenAndServe(config.FlagRunAddr, r)
+	fmt.Println("Running server on", config.Envs.RunAddr)
+	err := http.ListenAndServe(config.Envs.RunAddr, r)
 
 	if err != nil {
 		panic(err)

@@ -21,7 +21,7 @@ func TestCreateShortUrl(t *testing.T) {
 
 	defer srv.Close()
 
-	config.FlagBaseURL = srv.URL
+	config.Envs.BaseURL = srv.URL
 
 	type want struct {
 		method   string

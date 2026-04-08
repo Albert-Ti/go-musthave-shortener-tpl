@@ -58,7 +58,7 @@ func CreateShortUrl(urls *repository.ShortenedUrls) http.HandlerFunc {
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
 
-		fullUrl := fmt.Sprintf("%s/%s", config.FlagBaseURL, shortUrl)
+		fullUrl := fmt.Sprintf("%s/%s", config.Envs.BaseURL, shortUrl)
 
 		w.Write([]byte(fullUrl))
 	}
