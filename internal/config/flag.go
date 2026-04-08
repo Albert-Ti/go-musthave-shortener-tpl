@@ -1,6 +1,9 @@
 package config
 
-import "flag"
+import (
+	"flag"
+	"os"
+)
 
 var (
 	FlagRunAddr string
@@ -12,4 +15,11 @@ func ParseFlag() {
 	flag.StringVar(&FlagBaseURL, "b", "http://localhost:8080", "Base URL")
 
 	flag.Parse()
+
+	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
+		FlagRunAddr = envRunAddr
+	}
+	if envBaseUrl := os.Getenv("BASE_URL"); envBaseUrl != "" {
+		FlagBaseURL = envBaseUrl
+	}
 }
