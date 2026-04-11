@@ -16,7 +16,7 @@ import (
 func TestCreateShortUrl(t *testing.T) {
 	urls := &repository.ShortenedUrls{List: map[string]string{}, Count: 1}
 
-	handler := http.HandlerFunc(CreateShortUrl(urls))
+	handler := CreateShortUrl(urls)
 	srv := httptest.NewServer(handler)
 
 	defer srv.Close()
