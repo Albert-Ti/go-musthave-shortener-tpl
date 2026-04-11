@@ -14,9 +14,9 @@ import (
 )
 
 func TestRedirect(t *testing.T) {
-	storage := repository.NewURLStorage()
-	storage.Save("key_1", "http://yandex.ru")
-	urlService := service.NewURLService(storage)
+	urlStorage := repository.NewURLStorage()
+	urlService := service.NewURLService(urlStorage)
+	urlService.Set("http://yandex.ru")
 
 	type want struct {
 		method   string

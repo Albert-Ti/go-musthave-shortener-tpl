@@ -16,8 +16,8 @@ import (
 )
 
 func TestCreateShortUrl(t *testing.T) {
-	storage := repository.NewURLStorage()
-	urlService := service.NewURLService(storage)
+	urlStorage := repository.NewURLStorage()
+	urlService := service.NewURLService(urlStorage)
 
 	handler := CreateShortUrl(urlService)
 	srv := httptest.NewServer(handler)

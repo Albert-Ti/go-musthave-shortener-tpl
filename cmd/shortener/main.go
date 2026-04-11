@@ -16,8 +16,8 @@ import (
 func main() {
 	config.ParseFlag()
 
-	storage := repository.NewURLStorage()
-	urlService := service.NewURLService(storage)
+	urlStorage := repository.NewURLStorage()
+	urlService := service.NewURLService(urlStorage)
 
 	r := chi.NewRouter()
 
