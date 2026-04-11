@@ -8,6 +8,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	chiMiddleware "github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 )
@@ -15,10 +16,8 @@ import (
 func main() {
 	config.ParseFlag()
 
-	urls := &repository.ShortenedUrls{
-		List:  map[string]string{},
-		Count: 1,
-	}
+	storage := repository.NewURLStorage()
+	urlService := service.NewURLService(storage)
 
 	r := chi.NewRouter()
 
@@ -27,8 +26,8 @@ func main() {
 
 	r.Use(middleware.WithLogging)
 
-	r.Post("/", handler.CreateShortUrl(urls))
-	r.Get("/{id}", handler.RedirectById(urls))
+	r.Post("/", handler.CreateShortUrl(urlService))
+	r.Get("/{id}", handler.RedirectById(urlService))
 
 	slog.Info("Running server", "host", config.Envs.RunAddr)
 

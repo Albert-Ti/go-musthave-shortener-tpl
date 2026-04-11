@@ -3,12 +3,13 @@ package handler
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 )
 
 func validateUrl(inputUrl string) bool {
@@ -34,7 +35,7 @@ func validateUrl(inputUrl string) bool {
 	return true
 }
 
-func CreateShortUrl(urls *repository.ShortenedUrls) http.HandlerFunc {
+func CreateShortUrl(urlService *service.URLService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -46,14 +47,19 @@ func CreateShortUrl(urls *repository.ShortenedUrls) http.HandlerFunc {
 			http.Error(w, "Failed to read request body", http.StatusBadRequest)
 			return
 		}
-		defer r.Body.Close()
+
+		defer func() {
+			if err := r.Body.Close(); err != nil {
+				slog.Error("Failed to close request body", "error", err)
+			}
+		}()
 
 		if !validateUrl(string(body)) {
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
 			return
 		}
 
-		shortUrl := urls.Set(string(body))
+		shortUrl := urlService.Set(string(body))
 
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)

@@ -2,17 +2,21 @@ package handler
 
 import (
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRedirect(t *testing.T) {
-	urls := &repository.ShortenedUrls{List: map[string]string{"key_1": "http://yandex.ru"}}
+	storage := repository.NewURLStorage()
+	storage.Save("key_1", "http://yandex.ru")
+	urlService := service.NewURLService(storage)
 
 	type want struct {
 		method   string
@@ -30,7 +34,7 @@ func TestRedirect(t *testing.T) {
 			preset: "/key_1",
 			want: want{
 				method:   http.MethodGet,
-				location: urls.List["key_1"],
+				location: urlService.Get("key_1"),
 				code:     http.StatusTemporaryRedirect,
 			},
 		},
@@ -60,11 +64,16 @@ func TestRedirect(t *testing.T) {
 			r := httptest.NewRequest(tt.want.method, tt.preset, nil)
 			w := httptest.NewRecorder()
 
-			redirectHandler := RedirectById(urls)
+			redirectHandler := RedirectById(urlService)
 			redirectHandler(w, r)
 
 			result := w.Result()
-			defer result.Body.Close()
+
+			defer func() {
+				if err := result.Body.Close(); err != nil {
+					slog.Error("Failed to close request body", "error", err)
+				}
+			}()
 
 			responseBody, _ := io.ReadAll(result.Body)
 			gotBody := strings.TrimSpace(string(responseBody))

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,14 +10,16 @@ import (
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreateShortUrl(t *testing.T) {
-	urls := &repository.ShortenedUrls{List: map[string]string{}, Count: 1}
+	storage := repository.NewURLStorage()
+	urlService := service.NewURLService(storage)
 
-	handler := CreateShortUrl(urls)
+	handler := CreateShortUrl(urlService)
 	srv := httptest.NewServer(handler)
 
 	defer srv.Close()
@@ -81,7 +84,12 @@ func TestCreateShortUrl(t *testing.T) {
 				resp, err = http.Post(srv.URL, "text/plain", body)
 			}
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() {
+				if err := resp.Body.Close(); err != nil {
+					slog.Error("Failed to close request body", "error", err)
+				}
+			}()
 
 			responseBody, _ := io.ReadAll(resp.Body)
 			gotBody := strings.TrimSpace(string(responseBody))
