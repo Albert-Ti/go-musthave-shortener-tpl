@@ -17,8 +17,9 @@ func CreateShortUrlJSON(urlService *service.URLService) http.HandlerFunc {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+
 		if r.Header.Get("Content-type") != "application/json" {
-			http.Error(w, "Content-type not allowed", http.StatusBadRequest)
+			http.Error(w, "Unsupported Content-Type", http.StatusBadRequest)
 			return
 		}
 
@@ -37,6 +38,9 @@ func CreateShortUrlJSON(urlService *service.URLService) http.HandlerFunc {
 		fullUrl := fmt.Sprintf("%s/%s", config.Envs.BaseURL, keyUrl)
 
 		resp := model.UrlResponse{Result: fullUrl}
+
+		w.Header().Set("Content-type", "application/json")
+		w.WriteHeader(http.StatusCreated)
 
 		if err := json.NewEncoder(w).Encode(&resp); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
