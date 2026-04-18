@@ -28,6 +28,7 @@ func main() {
 
 	r.Post("/", handler.CreateShortUrl(urlService))
 	r.Get("/{id}", handler.RedirectById(urlService))
+	r.Post("/api/shorten", handler.CreateShortUrlJSON(urlService))
 
 	slog.Info("Running server", "host", config.Envs.RunAddr)
 

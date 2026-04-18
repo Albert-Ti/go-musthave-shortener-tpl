@@ -5,35 +5,11 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"net/url"
-	"strings"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/validator"
 )
-
-func validateUrl(inputUrl string) bool {
-	inputUrl = strings.TrimSpace(inputUrl)
-
-	if inputUrl == "" {
-		return false
-	}
-
-	parsedUrl, err := url.ParseRequestURI(inputUrl)
-	if err != nil {
-		return false
-	}
-
-	if parsedUrl.Host == "" {
-		return false
-	}
-
-	if parsedUrl.Scheme == "" {
-		return false
-	}
-
-	return true
-}
 
 func CreateShortUrl(urlService *service.URLService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -54,17 +30,17 @@ func CreateShortUrl(urlService *service.URLService) http.HandlerFunc {
 			}
 		}()
 
-		if !validateUrl(string(body)) {
+		if !validator.ValidateUrl(string(body)) {
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
 			return
 		}
 
-		shortUrl := urlService.Set(string(body))
+		keyUrl := urlService.Set(string(body))
 
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
 
-		fullUrl := fmt.Sprintf("%s/%s", config.Envs.BaseURL, shortUrl)
+		fullUrl := fmt.Sprintf("%s/%s", config.Envs.BaseURL, keyUrl)
 
 		w.Write([]byte(fullUrl))
 	}
