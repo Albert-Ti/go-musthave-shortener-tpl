@@ -16,10 +16,10 @@ import (
 )
 
 func TestCreateShortUrl(t *testing.T) {
-	urlStorage := repository.NewURLStorage()
-	urlService := service.NewURLService(urlStorage)
+	shortenUrlStorage := repository.NewShortenURLStorage()
+	shortenUrlService := service.NewShortenURLService(shortenUrlStorage)
 
-	handler := CreateShortUrl(urlService)
+	handler := CreateShortenUrl(shortenUrlService)
 	srv := httptest.NewServer(handler)
 
 	defer srv.Close()

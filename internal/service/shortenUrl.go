@@ -7,11 +7,11 @@ import (
 )
 
 type URLService struct {
-	repository repository.URLRepository
+	repository repository.ShortenURLRepository
 	Count      uint
 }
 
-func NewURLService(r repository.URLRepository) *URLService {
+func NewShortenURLService(r repository.ShortenURLRepository) *URLService {
 	return &URLService{
 		repository: r,
 		Count:      1,

@@ -7,7 +7,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 )
 
-func RedirectById(urlService *service.URLService) http.HandlerFunc {
+func RedirectByKeyUrl(shortenUrlService *service.URLService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -16,7 +16,7 @@ func RedirectById(urlService *service.URLService) http.HandlerFunc {
 
 		param := strings.TrimPrefix(r.URL.Path, "/")
 
-		url := urlService.Get(param)
+		url := shortenUrlService.Get(param)
 		if url == "" {
 			http.Error(w, "Url not found", http.StatusBadRequest)
 			return

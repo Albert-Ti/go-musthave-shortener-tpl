@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
@@ -11,14 +12,14 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/validator"
 )
 
-func CreateShortUrlJSON(urlService *service.URLService) http.HandlerFunc {
+func CreateShortenUrlJSON(shortenUrlService *service.URLService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
-		if r.Header.Get("Content-type") != "application/json" {
+		if !strings.Contains(r.Header.Get("Content-type"), "application/json") {
 			http.Error(w, "Unsupported Content-Type", http.StatusBadRequest)
 			return
 		}
@@ -34,7 +35,7 @@ func CreateShortUrlJSON(urlService *service.URLService) http.HandlerFunc {
 			return
 		}
 
-		keyUrl := urlService.Set(dec.Url)
+		keyUrl := shortenUrlService.Set(dec.Url)
 		fullUrl := fmt.Sprintf("%s/%s", config.Envs.BaseURL, keyUrl)
 
 		resp := model.UrlResponse{Result: fullUrl}

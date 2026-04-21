@@ -14,9 +14,9 @@ import (
 )
 
 func TestRedirect(t *testing.T) {
-	urlStorage := repository.NewURLStorage()
-	urlService := service.NewURLService(urlStorage)
-	urlService.Set("http://yandex.ru")
+	shortenUrlStorage := repository.NewShortenURLStorage()
+	shortenUrlService := service.NewShortenURLService(shortenUrlStorage)
+	shortenUrlService.Set("http://yandex.ru")
 
 	type want struct {
 		method   string
@@ -25,22 +25,22 @@ func TestRedirect(t *testing.T) {
 		response string
 	}
 	tests := []struct {
-		name   string
-		preset string
-		want   want
+		name     string
+		endpoint string
+		want     want
 	}{
 		{
-			name:   "case_1 Redirected",
-			preset: "/key_1",
+			name:     "case_1 Redirected",
+			endpoint: "/key_1",
 			want: want{
 				method:   http.MethodGet,
-				location: urlService.Get("key_1"),
+				location: shortenUrlService.Get("key_1"),
 				code:     http.StatusTemporaryRedirect,
 			},
 		},
 		{
-			name:   "case_2 Method Not Allowed",
-			preset: "/key_1",
+			name:     "case_2 Method Not Allowed",
+			endpoint: "/key_1",
 			want: want{
 				method:   http.MethodPost,
 				code:     http.StatusMethodNotAllowed,
@@ -48,8 +48,8 @@ func TestRedirect(t *testing.T) {
 			},
 		},
 		{
-			name:   "case_3 Url not found",
-			preset: "/unknown",
+			name:     "case_3 Url not found",
+			endpoint: "/unknown",
 			want: want{
 				method:   http.MethodGet,
 				code:     http.StatusBadRequest,
@@ -61,10 +61,10 @@ func TestRedirect(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			r := httptest.NewRequest(tt.want.method, tt.preset, nil)
+			r := httptest.NewRequest(tt.want.method, tt.endpoint, nil)
 			w := httptest.NewRecorder()
 
-			redirectHandler := RedirectById(urlService)
+			redirectHandler := RedirectByKeyUrl(shortenUrlService)
 			redirectHandler(w, r)
 
 			result := w.Result()
