@@ -28,10 +28,10 @@ func TestCreateShortUrlJSON(t *testing.T) {
 
 	config.Envs.BaseURL = srv.URL
 
-	respJSON, errResp := json.Marshal(model.UrlResponse{Result: srv.URL + "/key_1"})
+	respJSON, errResp := json.Marshal(model.ShortenUrlResponse{Result: srv.URL + "/key_1"})
 	require.NoError(t, errResp)
 
-	reqJSON, errReq := json.Marshal(model.UrlRequest{Url: "https://yandex.ru"})
+	reqJSON, errReq := json.Marshal(model.ShortenUrlRequest{Url: "https://yandex.ru"})
 	require.NoError(t, errReq)
 
 	type want struct {

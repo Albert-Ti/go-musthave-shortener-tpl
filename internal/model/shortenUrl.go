@@ -1,9 +1,9 @@
 package model
 
-type UrlRequest struct {
+type ShortenUrlRequest struct {
 	Url string `json:"url"`
 }
 
-type UrlResponse struct {
+type ShortenUrlResponse struct {
 	Result string `json:"result"`
 }
