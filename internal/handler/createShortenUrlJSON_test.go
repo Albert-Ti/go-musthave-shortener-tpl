@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -10,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
@@ -22,35 +25,42 @@ func TestCreateShortUrlJSON(t *testing.T) {
 	shortenUrlService := service.NewShortenURLService(shortenUrlStorage)
 
 	handler := CreateShortenUrlJSON(shortenUrlService)
-	srv := httptest.NewServer(handler)
+	srv := httptest.NewServer(middleware.GzipMiddleware(handler))
 
 	defer srv.Close()
 
 	config.Envs.BaseURL = srv.URL
 
-	respJSON, errResp := json.Marshal(model.ShortenUrlResponse{Result: srv.URL + "/key_1"})
-	require.NoError(t, errResp)
+	respJSON, err := json.Marshal(model.ShortenUrlResponse{Result: srv.URL + "/key_1"})
+	require.NoError(t, err)
 
-	reqJSON, errReq := json.Marshal(model.ShortenUrlRequest{Url: "https://yandex.ru"})
-	require.NoError(t, errReq)
+	respJSON2, err := json.Marshal(model.ShortenUrlResponse{Result: srv.URL + "/key_2"})
+	require.NoError(t, err)
+
+	reqJSON, err := json.Marshal(model.ShortenUrlRequest{Url: "https://yandex.ru"})
+	require.NoError(t, err)
 
 	type want struct {
-		method      string
-		code        int
-		contentType string
-		response    string
+		method          string
+		code            int
+		contentType     string
+		acceptEncoding  string
+		contentEncoding string
+		response        string
 	}
 
 	tests := []struct {
-		name        string
-		contentType string
-		body        *strings.Reader
-		want        want
+		name            string
+		contentType     string
+		acceptEncoding  string
+		contentEncoding string
+		body            string
+		want            want
 	}{
 		{
 			name:        "case_1 Created",
 			contentType: "application/json",
-			body:        strings.NewReader(string(reqJSON)),
+			body:        string(reqJSON),
 			want: want{
 				method:      http.MethodPost,
 				code:        http.StatusCreated,
@@ -59,9 +69,7 @@ func TestCreateShortUrlJSON(t *testing.T) {
 			},
 		},
 		{
-			name:        "case_2 Method Not Allowed",
-			contentType: "text/plain; charset=utf-8",
-			body:        strings.NewReader(""),
+			name: "case_2 Method Not Allowed",
 			want: want{
 				method:      http.MethodGet,
 				code:        http.StatusMethodNotAllowed,
@@ -71,8 +79,7 @@ func TestCreateShortUrlJSON(t *testing.T) {
 		},
 		{
 			name:        "case_3 Unsupported Content-Type",
-			contentType: "text/plain; charset=utf-8",
-			body:        strings.NewReader(""),
+			contentType: "text/html",
 			want: want{
 				method:      http.MethodPost,
 				code:        http.StatusBadRequest,
@@ -80,10 +87,33 @@ func TestCreateShortUrlJSON(t *testing.T) {
 				response:    "Unsupported Content-Type",
 			},
 		},
+		{
+			name:            "case_4 Send gzip",
+			contentType:     "application/json",
+			contentEncoding: "gzip",
+			body:            string(reqJSON),
+			want: want{
+				method:      http.MethodPost,
+				code:        http.StatusCreated,
+				contentType: "application/json",
+				response:    string(respJSON2),
+			},
+		},
+		{
+			name:           "case_5 Accept gzip",
+			contentType:    "application/json",
+			acceptEncoding: "gzip",
+			body:           string(reqJSON),
+			want: want{
+				method:      http.MethodPost,
+				code:        http.StatusCreated,
+				contentType: "application/json",
+				response:    string(respJSON2),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			var (
 				resp *http.Response
 				err  error
@@ -91,8 +121,33 @@ func TestCreateShortUrlJSON(t *testing.T) {
 			if tt.want.method == http.MethodGet {
 				resp, err = http.Get(srv.URL)
 			} else {
-				resp, err = http.Post(srv.URL, tt.contentType, tt.body)
+				var bodyReader io.Reader
+
+				if tt.contentEncoding == "gzip" {
+					// Сжимаем тело запроса
+					buf := bytes.NewBuffer(nil)
+					gzWriter := gzip.NewWriter(buf)
+					_, err := gzWriter.Write([]byte(tt.body))
+					require.NoError(t, err)
+					err = gzWriter.Close()
+					require.NoError(t, err)
+					bodyReader = buf
+				} else {
+					bodyReader = strings.NewReader(tt.body)
+				}
+
+				req, err := http.NewRequest(tt.want.method, srv.URL, bodyReader)
+				require.NoError(t, err)
+
+				req.Header.Set("Content-Type", tt.contentType)
+				req.Header.Set("Content-Encoding", tt.contentEncoding)
+				req.Header.Set("Accept-Encoding", tt.acceptEncoding)
+
+				client := &http.Client{}
+				resp, err = client.Do(req)
+				require.NoError(t, err)
 			}
+
 			require.NoError(t, err)
 
 			defer func() {

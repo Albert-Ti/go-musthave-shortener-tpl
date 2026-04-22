@@ -23,7 +23,9 @@ func main() {
 
 	r.Use(chiMiddleware.RealIP)
 	r.Use(chiMiddleware.Recoverer)
+
 	r.Use(myMiddleware.WithLogging)
+	r.Use(myMiddleware.GzipMiddleware)
 
 	r.Post("/", handler.CreateShortenUrl(shortenUrlService))
 	r.Get("/{id}", handler.RedirectByKeyUrl(shortenUrlService))
