@@ -31,6 +31,9 @@ func TestCreateShortUrlJSON(t *testing.T) {
 
 	config.Envs.BaseURL = srv.URL
 
+	reqJSON, err := json.Marshal(model.ShortenUrlRequest{Url: "https://yandex.ru"})
+	require.NoError(t, err)
+
 	respJSON, err := json.Marshal(model.ShortenUrlResponse{Result: srv.URL + "/key_1"})
 	require.NoError(t, err)
 
@@ -38,9 +41,6 @@ func TestCreateShortUrlJSON(t *testing.T) {
 	require.NoError(t, err)
 
 	respJSON3, err := json.Marshal(model.ShortenUrlResponse{Result: srv.URL + "/key_3"})
-	require.NoError(t, err)
-
-	reqJSON, err := json.Marshal(model.ShortenUrlRequest{Url: "https://yandex.ru"})
 	require.NoError(t, err)
 
 	type want struct {
@@ -111,8 +111,8 @@ func TestCreateShortUrlJSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				resp *http.Response
-				err  error
 				req  *http.Request
+				err  error
 			)
 
 			if tt.want.method == http.MethodGet {
