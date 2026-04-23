@@ -14,7 +14,10 @@ import (
 )
 
 func TestRedirect(t *testing.T) {
-	shortenUrlStorage := repository.NewShortenURLStorage()
+	shortenUrlStorage, err := repository.NewShortenURLStorage()
+	if err != nil {
+		panic(err)
+	}
 	shortenUrlService := service.NewShortenURLService(shortenUrlStorage)
 	shortenUrlService.Set("http://yandex.ru")
 

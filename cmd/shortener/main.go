@@ -16,7 +16,8 @@ import (
 func main() {
 	config.ParseFlag()
 
-	shortenUrlStorage := repository.NewShortenURLStorage()
+	shortenUrlStorage, _ := repository.NewShortenURLStorage()
+
 	shortenUrlService := service.NewShortenURLService(shortenUrlStorage)
 
 	r := chi.NewRouter()

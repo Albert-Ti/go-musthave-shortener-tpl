@@ -21,7 +21,10 @@ import (
 )
 
 func TestCreateShortUrlJSON(t *testing.T) {
-	shortenUrlStorage := repository.NewShortenURLStorage()
+	shortenUrlStorage, err := repository.NewShortenURLStorage()
+	if err != nil {
+		panic(err)
+	}
 	shortenUrlService := service.NewShortenURLService(shortenUrlStorage)
 
 	handler := CreateShortenUrlJSON(shortenUrlService)
