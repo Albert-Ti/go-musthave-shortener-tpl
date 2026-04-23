@@ -50,3 +50,10 @@ func (u *ShortenURLStorage) Save(key string, url string, count uint) {
 
 	json.NewEncoder(u.file).Encode(record)
 }
+
+func (u *ShortenURLStorage) Close() error {
+	return u.file.Close()
+}
+func (u *ShortenURLStorage) Remove() {
+	os.Remove(u.file.Name())
+}

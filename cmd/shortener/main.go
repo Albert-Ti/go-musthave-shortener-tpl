@@ -16,7 +16,11 @@ import (
 func main() {
 	config.ParseFlag()
 
-	shortenUrlStorage, _ := repository.NewShortenURLStorage()
+	shortenUrlStorage, e := repository.NewShortenURLStorage()
+	if e != nil {
+		panic(e)
+	}
+	defer shortenUrlStorage.Close()
 
 	shortenUrlService := service.NewShortenURLService(shortenUrlStorage)
 

@@ -16,10 +16,15 @@ import (
 )
 
 func TestCreateShortUrl(t *testing.T) {
-	shortenUrlStorage, err := repository.NewShortenURLStorage()
-	if err != nil {
-		panic(err)
+	config.Envs.FileStoragePath = "test.json"
+	shortenUrlStorage, e := repository.NewShortenURLStorage()
+	if e != nil {
+		panic(e)
 	}
+	defer func() {
+		shortenUrlStorage.Close()
+		shortenUrlStorage.Remove()
+	}()
 	shortenUrlService := service.NewShortenURLService(shortenUrlStorage)
 
 	handler := CreateShortenUrl(shortenUrlService)
@@ -37,12 +42,12 @@ func TestCreateShortUrl(t *testing.T) {
 
 	tests := []struct {
 		name string
-		body *strings.Reader
+		body string
 		want want
 	}{
 		{
 			name: "case_1 Created",
-			body: strings.NewReader("https://yandex.ru"),
+			body: "https://yandex.ru",
 			want: want{
 				method:   http.MethodPost,
 				code:     http.StatusCreated,
@@ -51,7 +56,7 @@ func TestCreateShortUrl(t *testing.T) {
 		},
 		{
 			name: "case_2 Method Not Allowed",
-			body: strings.NewReader(""),
+			body: "",
 			want: want{
 				method:   http.MethodGet,
 				code:     http.StatusMethodNotAllowed,
@@ -60,7 +65,7 @@ func TestCreateShortUrl(t *testing.T) {
 		},
 		{
 			name: "case_3 No body",
-			body: strings.NewReader(""),
+			body: "",
 			want: want{
 				method:   http.MethodPost,
 				code:     http.StatusBadRequest,
@@ -79,7 +84,7 @@ func TestCreateShortUrl(t *testing.T) {
 			if tt.want.method == http.MethodGet {
 				resp, err = http.Get(srv.URL)
 			} else {
-				resp, err = http.Post(srv.URL, "text/plain", tt.body)
+				resp, err = http.Post(srv.URL, "text/plain", strings.NewReader(tt.body))
 			}
 			require.NoError(t, err)
 

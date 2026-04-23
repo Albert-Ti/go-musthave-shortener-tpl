@@ -8,16 +8,22 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRedirect(t *testing.T) {
-	shortenUrlStorage, err := repository.NewShortenURLStorage()
-	if err != nil {
-		panic(err)
+	config.Envs.FileStoragePath = "test.json"
+	shortenUrlStorage, e := repository.NewShortenURLStorage()
+	if e != nil {
+		panic(e)
 	}
+	defer func() {
+		shortenUrlStorage.Close()
+		shortenUrlStorage.Remove()
+	}()
 	shortenUrlService := service.NewShortenURLService(shortenUrlStorage)
 	shortenUrlService.Set("http://yandex.ru")
 
