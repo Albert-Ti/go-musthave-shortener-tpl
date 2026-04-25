@@ -75,8 +75,7 @@ func TestCreateShortURLJSON(t *testing.T) {
 			},
 		},
 		{
-			name:        "case_2 Method Not Allowed",
-			contentType: "text/plain",
+			name: "case_2 Method Not Allowed",
 			want: want{
 				method:      http.MethodGet,
 				code:        http.StatusMethodNotAllowed,
@@ -85,7 +84,8 @@ func TestCreateShortURLJSON(t *testing.T) {
 			},
 		},
 		{
-			name: "case_2 Unsupported Content-Type",
+			name:        "case_2 Unsupported Content-Type",
+			contentType: "text/plain",
 			want: want{
 				method:      http.MethodPost,
 				code:        http.StatusBadRequest,
