@@ -30,7 +30,7 @@ func CreateShortenURLJSON(shortenUrlService *service.ShortenURLService) http.Han
 			return
 		}
 
-		if !validator.ValidateUrl(string(dec.URL)) {
+		if !validator.ValidateURL(string(dec.URL)) {
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
 			return
 		}

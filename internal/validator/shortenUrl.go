@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func ValidateUrl(inputURL string) bool {
+func ValidateURL(inputURL string) bool {
 	inputURL = strings.TrimSpace(inputURL)
 
 	if inputURL == "" {

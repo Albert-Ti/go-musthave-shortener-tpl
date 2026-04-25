@@ -30,7 +30,7 @@ func CreateShortenURL(shortenUrlService *service.ShortenURLService) http.Handler
 			}
 		}()
 
-		if !validator.ValidateUrl(string(body)) {
+		if !validator.ValidateURL(string(body)) {
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
 			return
 		}
