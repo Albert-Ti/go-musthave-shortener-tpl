@@ -35,13 +35,13 @@ func CreateShortenURL(shortenUrlService *service.ShortenURLService) http.Handler
 			return
 		}
 
-		keyUrl := shortenUrlService.Set(string(body))
+		keyURL := shortenUrlService.Set(string(body))
 
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)
 
-		fullUrl := fmt.Sprintf("%s/%s", config.Envs.BaseURL, keyUrl)
+		fullURL := fmt.Sprintf("%s/%s", config.Envs.BaseURL, keyURL)
 
-		w.Write([]byte(fullUrl))
+		w.Write([]byte(fullURL))
 	}
 }
