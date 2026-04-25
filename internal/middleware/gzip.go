@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/validator"
 )
 
 type compressWriter struct {
@@ -18,19 +20,20 @@ func newCompressWriter(w http.ResponseWriter) *compressWriter {
 		zw: gzip.NewWriter(w),
 	}
 }
-func (c *compressWriter) Write(p []byte) (int, error) {
-	return c.zw.Write(p)
-}
 
 func (c *compressWriter) Header() http.Header {
 	return c.w.Header()
 }
 
 func (c *compressWriter) WriteHeader(statusCode int) {
-	if statusCode < 300 {
-		c.w.Header().Set("Content-Encoding", "gzip")
+	if statusCode <= 300 {
+		c.Header().Set("Content-Encoding", "gzip")
 	}
 	c.w.WriteHeader(statusCode)
+}
+
+func (c *compressWriter) Write(p []byte) (int, error) {
+	return c.zw.Write(p)
 }
 
 func (c *compressWriter) Close() error {
@@ -67,6 +70,10 @@ func (c *compressReader) Close() error {
 
 func GzipCompress(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !validator.ValidateContentType(r.Header.Get("Content-Type")) {
+			next.ServeHTTP(w, r)
+			return
+		}
 
 		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
 			cr, err := newCompressReader(r.Body)

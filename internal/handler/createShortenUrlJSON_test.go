@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"io"
@@ -52,21 +51,17 @@ func TestCreateShortURLJSON(t *testing.T) {
 	require.NoError(t, err)
 
 	type want struct {
-		method          string
-		code            int
-		contentType     string
-		acceptEncoding  string
-		contentEncoding string
-		response        string
+		method      string
+		code        int
+		contentType string
+		response    string
 	}
 
 	tests := []struct {
-		name            string
-		contentType     string
-		acceptEncoding  string
-		contentEncoding string
-		body            string
-		want            want
+		name        string
+		contentType string
+		body        string
+		want        want
 	}{
 		{
 			name:        "case_1 Created",
@@ -80,8 +75,8 @@ func TestCreateShortURLJSON(t *testing.T) {
 			},
 		},
 		{
-			name:           "case_2 Method Not Allowed",
-			acceptEncoding: "",
+			name:        "case_2 Method Not Allowed",
+			contentType: "text/plain",
 			want: want{
 				method:      http.MethodGet,
 				code:        http.StatusMethodNotAllowed,
@@ -90,11 +85,18 @@ func TestCreateShortURLJSON(t *testing.T) {
 			},
 		},
 		{
-			name:            "case_4 Send gzip",
-			contentType:     "application/json",
-			contentEncoding: "gzip",
-			acceptEncoding:  "",
-			body:            string(reqJSON),
+			name: "case_2 Unsupported Content-Type",
+			want: want{
+				method:      http.MethodPost,
+				code:        http.StatusBadRequest,
+				contentType: "text/plain; charset=utf-8",
+				response:    "Unsupported Content-Type",
+			},
+		},
+		{
+			name:        "case_4 Send gzip",
+			contentType: "application/json",
+			body:        string(reqJSON),
 			want: want{
 				method:      http.MethodPost,
 				code:        http.StatusCreated,
@@ -103,11 +105,9 @@ func TestCreateShortURLJSON(t *testing.T) {
 			},
 		},
 		{
-			name:            "case_5 Accept gzip",
-			contentType:     "application/json",
-			contentEncoding: "",
-			acceptEncoding:  "gzip",
-			body:            string(reqJSON),
+			name:        "case_5 Accept gzip",
+			contentType: "application/json",
+			body:        string(reqJSON),
 			want: want{
 				method:      http.MethodPost,
 				code:        http.StatusCreated,
@@ -116,6 +116,7 @@ func TestCreateShortURLJSON(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
@@ -123,35 +124,16 @@ func TestCreateShortURLJSON(t *testing.T) {
 				req  *http.Request
 				err  error
 			)
+			var bodyReader io.Reader = strings.NewReader(tt.body)
 
 			if tt.want.method == http.MethodGet {
 				req, err = http.NewRequest(http.MethodGet, srv.URL, nil)
 				require.NoError(t, err)
-			} else {
-				var bodyReader io.Reader = strings.NewReader(tt.body)
-
-				if tt.contentEncoding == "gzip" {
-					buf := bytes.NewBuffer(nil)
-					gzWriter := gzip.NewWriter(buf)
-					_, err := gzWriter.Write([]byte(tt.body))
-					require.NoError(t, err)
-					err = gzWriter.Close()
-					require.NoError(t, err)
-					bodyReader = buf
-				}
-
-				req, err = http.NewRequest(tt.want.method, srv.URL, bodyReader)
-				require.NoError(t, err)
-
-				req.Header.Set("Content-Type", tt.contentType)
-				if tt.contentEncoding != "" {
-					req.Header.Set("Content-Encoding", tt.contentEncoding)
-				}
-				if tt.acceptEncoding != "" {
-					req.Header.Set("Accept-Encoding", tt.acceptEncoding)
-				}
 			}
+			req, err = http.NewRequest(tt.want.method, srv.URL, bodyReader)
+			require.NoError(t, err)
 
+			req.Header.Set("Content-Type", tt.contentType)
 			client := &http.Client{}
 			resp, err = client.Do(req)
 			require.NoError(t, err)

@@ -27,3 +27,13 @@ func ValidateUrl(inputUrl string) bool {
 
 	return true
 }
+
+func ValidateContentType(contentType string) bool {
+	switch contentType {
+	case "application/json":
+		return true
+	case "text/html":
+		return true
+	}
+	return false
+}
