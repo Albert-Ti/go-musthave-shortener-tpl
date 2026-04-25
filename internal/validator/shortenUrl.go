@@ -5,23 +5,23 @@ import (
 	"strings"
 )
 
-func ValidateUrl(inputUrl string) bool {
-	inputUrl = strings.TrimSpace(inputUrl)
+func ValidateUrl(inputURL string) bool {
+	inputURL = strings.TrimSpace(inputURL)
 
-	if inputUrl == "" {
+	if inputURL == "" {
 		return false
 	}
 
-	parsedUrl, err := url.ParseRequestURI(inputUrl)
+	parsedURL, err := url.ParseRequestURI(inputURL)
 	if err != nil {
 		return false
 	}
 
-	if parsedUrl.Host == "" {
+	if parsedURL.Host == "" {
 		return false
 	}
 
-	if parsedUrl.Scheme == "" {
+	if parsedURL.Scheme == "" {
 		return false
 	}
 
