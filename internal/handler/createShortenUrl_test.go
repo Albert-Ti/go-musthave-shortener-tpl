@@ -15,19 +15,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateShortUrl(t *testing.T) {
+func TestCreateShortURL(t *testing.T) {
 	config.Envs.FileStoragePath = "test.json"
-	shortenUrlStorage, e := repository.NewShortenURLStorage()
+	shortenURLStorage, e := repository.NewShortenURLStorage()
 	if e != nil {
 		panic(e)
 	}
 	defer func() {
-		shortenUrlStorage.Close()
-		shortenUrlStorage.Remove()
+		shortenURLStorage.Close()
+		shortenURLStorage.Remove()
 	}()
-	shortenUrlService := service.NewShortenURLService(shortenUrlStorage)
+	shortenUrlService := service.NewShortenURLService(shortenURLStorage)
 
-	handler := CreateShortenUrl(shortenUrlService)
+	handler := CreateShortenURL(shortenUrlService)
 	srv := httptest.NewServer(handler)
 
 	defer srv.Close()

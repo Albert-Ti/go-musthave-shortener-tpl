@@ -11,7 +11,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/validator"
 )
 
-func CreateShortenUrl(shortenUrlService *service.ShortenURLService) http.HandlerFunc {
+func CreateShortenURL(shortenUrlService *service.ShortenURLService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

@@ -8,13 +8,13 @@ import (
 
 type ShortenURLService struct {
 	repository repository.ShortenURLRepository
-	Count      uint
+	count      int
 }
 
 func NewShortenURLService(r repository.ShortenURLRepository) *ShortenURLService {
 	return &ShortenURLService{
 		repository: r,
-		Count:      1,
+		count:      int(r.Length()),
 	}
 }
 
@@ -23,10 +23,8 @@ func (u *ShortenURLService) Get(key string) string {
 }
 
 func (u *ShortenURLService) Set(url string) string {
-	key := "key_" + strconv.Itoa(int(u.Count))
-	u.repository.Save(key, url, u.Count)
-
-	u.Count++
+	key := "key_" + strconv.Itoa(u.repository.Length())
+	u.repository.Save(key, url)
 
 	return key
 }

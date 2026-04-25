@@ -16,25 +16,24 @@ import (
 func main() {
 	config.ParseFlag()
 
-	shortenUrlStorage, e := repository.NewShortenURLStorage()
+	shortenURLStorage, e := repository.NewShortenURLStorage()
 	if e != nil {
 		panic(e)
 	}
-	defer shortenUrlStorage.Close()
+	defer shortenURLStorage.Close()
 
-	shortenUrlService := service.NewShortenURLService(shortenUrlStorage)
+	shortenUrlService := service.NewShortenURLService(shortenURLStorage)
 
 	r := chi.NewRouter()
 
 	r.Use(chiMiddleware.RealIP)
 	r.Use(chiMiddleware.Recoverer)
-
 	r.Use(myMiddleware.WithLogging)
-	r.Use(myMiddleware.GzipMiddleware)
+	r.Use(myMiddleware.GzipCompress)
 
-	r.Post("/", handler.CreateShortenUrl(shortenUrlService))
-	r.Get("/{id}", handler.RedirectByKeyUrl(shortenUrlService))
-	r.Post("/api/shorten", handler.CreateShortenUrlJSON(shortenUrlService))
+	r.Post("/", handler.CreateShortenURL(shortenUrlService))
+	r.Get("/{id}", handler.RedirectByKeyURL(shortenUrlService))
+	r.Post("/api/shorten", handler.CreateShortenURLJSON(shortenUrlService))
 
 	slog.Info("Running server", "host", config.Envs.RunAddr)
 

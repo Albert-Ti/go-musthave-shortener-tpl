@@ -14,17 +14,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRedirect(t *testing.T) {
+func TestRedirectByKeyURL(t *testing.T) {
 	config.Envs.FileStoragePath = "test.json"
-	shortenUrlStorage, e := repository.NewShortenURLStorage()
+	shortenURLStorage, e := repository.NewShortenURLStorage()
 	if e != nil {
 		panic(e)
 	}
 	defer func() {
-		shortenUrlStorage.Close()
-		shortenUrlStorage.Remove()
+		shortenURLStorage.Close()
+		shortenURLStorage.Remove()
 	}()
-	shortenUrlService := service.NewShortenURLService(shortenUrlStorage)
+	shortenUrlService := service.NewShortenURLService(shortenURLStorage)
 	shortenUrlService.Set("http://yandex.ru")
 
 	type want struct {
@@ -57,12 +57,12 @@ func TestRedirect(t *testing.T) {
 			},
 		},
 		{
-			name:     "case_3 Url not found",
+			name:     "case_3 URL not found",
 			endpoint: "/unknown",
 			want: want{
 				method:   http.MethodGet,
 				code:     http.StatusBadRequest,
-				response: "Url not found",
+				response: "URL not found",
 			},
 		},
 	}
@@ -73,7 +73,7 @@ func TestRedirect(t *testing.T) {
 			r := httptest.NewRequest(tt.want.method, tt.endpoint, nil)
 			w := httptest.NewRecorder()
 
-			redirectHandler := RedirectByKeyUrl(shortenUrlService)
+			redirectHandler := RedirectByKeyURL(shortenUrlService)
 			redirectHandler(w, r)
 
 			result := w.Result()

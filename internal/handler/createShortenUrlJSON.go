@@ -12,7 +12,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/validator"
 )
 
-func CreateShortenUrlJSON(shortenUrlService *service.ShortenURLService) http.HandlerFunc {
+func CreateShortenURLJSON(shortenUrlService *service.ShortenURLService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -30,12 +30,12 @@ func CreateShortenUrlJSON(shortenUrlService *service.ShortenURLService) http.Han
 			return
 		}
 
-		if !validator.ValidateUrl(string(dec.Url)) {
+		if !validator.ValidateUrl(string(dec.URL)) {
 			http.Error(w, "Invalid URL", http.StatusBadRequest)
 			return
 		}
 
-		keyUrl := shortenUrlService.Set(dec.Url)
+		keyUrl := shortenUrlService.Set(dec.URL)
 		fullUrl := fmt.Sprintf("%s/%s", config.Envs.BaseURL, keyUrl)
 
 		resp := model.ShortenUrlResponse{Result: fullUrl}

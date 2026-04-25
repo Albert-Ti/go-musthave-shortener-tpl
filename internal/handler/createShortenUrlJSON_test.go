@@ -20,26 +20,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateShortUrlJSON(t *testing.T) {
+func TestCreateShortURLJSON(t *testing.T) {
 	config.Envs.FileStoragePath = "test.json"
-	shortenUrlStorage, e := repository.NewShortenURLStorage()
+	shortenURLStorage, e := repository.NewShortenURLStorage()
 	if e != nil {
 		panic(e)
 	}
 	defer func() {
-		shortenUrlStorage.Close()
-		shortenUrlStorage.Remove()
+		shortenURLStorage.Close()
+		shortenURLStorage.Remove()
 	}()
-	shortenUrlService := service.NewShortenURLService(shortenUrlStorage)
+	shortenURLService := service.NewShortenURLService(shortenURLStorage)
 
-	handler := CreateShortenUrlJSON(shortenUrlService)
-	srv := httptest.NewServer(middleware.GzipMiddleware(handler))
+	handler := CreateShortenURLJSON(shortenURLService)
+	srv := httptest.NewServer(middleware.GzipCompress(handler))
 
 	defer srv.Close()
 
 	config.Envs.BaseURL = srv.URL
 
-	reqJSON, err := json.Marshal(model.ShortenUrlRequest{Url: "https://yandex.ru"})
+	reqJSON, err := json.Marshal(model.ShortenUrlRequest{URL: "https://yandex.ru"})
 	require.NoError(t, err)
 
 	respJSON, err := json.Marshal(model.ShortenUrlResponse{Result: srv.URL + "/key_1"})
@@ -80,7 +80,8 @@ func TestCreateShortUrlJSON(t *testing.T) {
 			},
 		},
 		{
-			name: "case_2 Method Not Allowed",
+			name:           "case_2 Method Not Allowed",
+			acceptEncoding: "",
 			want: want{
 				method:      http.MethodGet,
 				code:        http.StatusMethodNotAllowed,
