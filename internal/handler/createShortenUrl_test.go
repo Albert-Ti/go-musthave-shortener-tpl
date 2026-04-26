@@ -2,26 +2,37 @@ package handler
 
 import (
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateShortUrl(t *testing.T) {
-	urls := &model.ShortenedUrls{List: map[string]string{}, Count: 1}
+func TestCreateShortURL(t *testing.T) {
+	config.Envs.FileStoragePath = "test.json"
+	shortenURLStorage, e := repository.NewShortenURLStorage()
+	if e != nil {
+		panic(e)
+	}
+	defer func() {
+		shortenURLStorage.Close()
+		shortenURLStorage.Remove()
+	}()
+	shortenUrlService := service.NewShortenURLService(shortenURLStorage)
 
-	handler := http.HandlerFunc(CreateShortUrl(urls))
+	handler := CreateShortenURL(shortenUrlService)
 	srv := httptest.NewServer(handler)
 
 	defer srv.Close()
 
-	config.FlagBaseURL = srv.URL
+	config.Envs.BaseURL = srv.URL
 
 	type want struct {
 		method   string
@@ -30,13 +41,13 @@ func TestCreateShortUrl(t *testing.T) {
 	}
 
 	tests := []struct {
-		name   string
-		preset string
-		want   want
+		name string
+		body string
+		want want
 	}{
 		{
-			name:   "case_1 Created",
-			preset: "https://yandex.ru",
+			name: "case_1 Created",
+			body: "https://yandex.ru",
 			want: want{
 				method:   http.MethodPost,
 				code:     http.StatusCreated,
@@ -44,8 +55,8 @@ func TestCreateShortUrl(t *testing.T) {
 			},
 		},
 		{
-			name:   "case_2 Method Not Allowed",
-			preset: "https://yandex.ru",
+			name: "case_2 Method Not Allowed",
+			body: "",
 			want: want{
 				method:   http.MethodGet,
 				code:     http.StatusMethodNotAllowed,
@@ -53,8 +64,8 @@ func TestCreateShortUrl(t *testing.T) {
 			},
 		},
 		{
-			name:   "case_3 No body",
-			preset: "",
+			name: "case_3 No body",
+			body: "",
 			want: want{
 				method:   http.MethodPost,
 				code:     http.StatusBadRequest,
@@ -66,11 +77,6 @@ func TestCreateShortUrl(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			body := strings.NewReader("https://yandex.ru")
-			if tt.preset == "" {
-				body = strings.NewReader("")
-			}
-
 			var (
 				resp *http.Response
 				err  error
@@ -78,17 +84,20 @@ func TestCreateShortUrl(t *testing.T) {
 			if tt.want.method == http.MethodGet {
 				resp, err = http.Get(srv.URL)
 			} else {
-				resp, err = http.Post(srv.URL, "text/plain", body)
+				resp, err = http.Post(srv.URL, "text/plain", strings.NewReader(tt.body))
 			}
 			require.NoError(t, err)
-			defer resp.Body.Close()
+
+			defer func() {
+				if err := resp.Body.Close(); err != nil {
+					slog.Error("Failed to close request body", "error", err)
+				}
+			}()
 
 			responseBody, _ := io.ReadAll(resp.Body)
 			gotBody := strings.TrimSpace(string(responseBody))
 
-			if tt.want.response != "" {
-				assert.Equal(t, tt.want.response, gotBody)
-			}
+			assert.Equal(t, tt.want.response, gotBody)
 			assert.Equal(t, tt.want.code, resp.StatusCode)
 		})
 	}

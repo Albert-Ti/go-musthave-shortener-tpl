@@ -1,35 +1,43 @@
 package main
 
 import (
-	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
-	"github.com/go-chi/chi/middleware"
+	myMiddleware "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
+	chiMiddleware "github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 )
 
 func main() {
 	config.ParseFlag()
 
-	urls := &model.ShortenedUrls{
-		List:  map[string]string{},
-		Count: 1,
+	shortenURLStorage, e := repository.NewShortenURLStorage()
+	if e != nil {
+		panic(e)
 	}
+	defer shortenURLStorage.Close()
+
+	shortenUrlService := service.NewShortenURLService(shortenURLStorage)
 
 	r := chi.NewRouter()
 
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
+	r.Use(chiMiddleware.RealIP)
+	r.Use(chiMiddleware.Recoverer)
+	r.Use(myMiddleware.WithLogging)
+	r.Use(myMiddleware.GzipCompress)
 
-	r.Post("/", handler.CreateShortUrl(urls))
-	r.Get("/{id}", handler.RedirectById(urls))
+	r.Post("/", handler.CreateShortenURL(shortenUrlService))
+	r.Get("/{id}", handler.RedirectByKeyURL(shortenUrlService))
+	r.Post("/api/shorten", handler.CreateShortenURLJSON(shortenUrlService))
 
-	fmt.Println("Running server on", config.FlagRunAddr)
-	err := http.ListenAndServe(config.FlagRunAddr, r)
+	slog.Info("Running server", "host", config.Envs.RunAddr)
+
+	err := http.ListenAndServe(config.Envs.RunAddr, r)
 
 	if err != nil {
 		panic(err)

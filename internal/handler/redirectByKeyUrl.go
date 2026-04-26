@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 )
 
-func RedirectById(urls *model.ShortenedUrls) http.HandlerFunc {
+func RedirectByKeyURL(shortenUrlService *service.ShortenURLService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -16,9 +16,9 @@ func RedirectById(urls *model.ShortenedUrls) http.HandlerFunc {
 
 		param := strings.TrimPrefix(r.URL.Path, "/")
 
-		url := urls.GetUrl(param)
+		url := shortenUrlService.Get(param)
 		if url == "" {
-			http.Error(w, "Url not found", http.StatusBadRequest)
+			http.Error(w, "URL not found", http.StatusBadRequest)
 			return
 		}
 
