@@ -1,0 +1,18 @@
+name: shortenURL
+
+services:
+  postgres:
+    container_name: shortenURL
+    image: postgres:latest
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=shorten_url_db
+    volumes:
+      - data:/var/lib/postgresql
+
+volumes:
+  data: {}

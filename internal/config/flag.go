@@ -9,6 +9,7 @@ var Envs struct {
 	RunAddr         string
 	BaseURL         string
 	FileStoragePath string
+	DatabaseURL     string
 }
 
 func ParseFlag() {
@@ -27,4 +28,6 @@ func ParseFlag() {
 	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
 		Envs.FileStoragePath = envFileStoragePath
 	}
+
+	Envs.DatabaseURL = "postgres://postgres:postgres@localhost:5432/shorten_url_db"
 }

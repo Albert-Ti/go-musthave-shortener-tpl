@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config/db"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
 	myMiddleware "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
@@ -37,6 +38,7 @@ func main() {
 
 	slog.Info("Running server", "host", config.Envs.RunAddr)
 
+	db.Init()
 	err := http.ListenAndServe(config.Envs.RunAddr, r)
 
 	if err != nil {
