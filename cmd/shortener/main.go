@@ -35,7 +35,13 @@ func main() {
 	r.Post("/", handler.CreateShortenURL(shortenUrlService))
 	r.Get("/{id}", handler.RedirectByKeyURL(shortenUrlService))
 	r.Post("/api/shorten", handler.CreateShortenURLJSON(shortenUrlService))
-	r.Get("/ping", db.PingConnection(shortenUrlService))
+	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
+		if err := db.Ping(); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
 
 	slog.Info("Running server", "host", config.Envs.RunAddr)
 

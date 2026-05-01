@@ -2,41 +2,31 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"net/http"
+	"log/slog"
 	"time"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5"
 )
 
-var DB *sql.DB
+var Connect *pgx.Conn
 
 func Connection() {
-	db, err := sql.Open("pgx", config.Envs.DatabaseURL)
+	conn, err := pgx.Connect(context.Background(), config.Envs.DatabaseDSN)
 	if err != nil {
 		panic(err)
 	}
-
-	DB = db
+	Connect = conn
+	slog.Info("Connect to DB")
 }
 
-func PingConnection(shortenUrlService *service.ShortenURLService) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+func Ping() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		if err := DB.PingContext(ctx); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		w.WriteHeader(http.StatusOK)
+	if err := Connect.Ping(ctx); err != nil {
+		Connect.Close(ctx)
+		return err
 	}
+	return nil
 }
