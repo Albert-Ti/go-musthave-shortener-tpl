@@ -17,7 +17,7 @@ func Connection() {
 		panic(err)
 	}
 	Connect = conn
-	slog.Info("Connect to DB")
+	slog.Info("Connect to DB", "conn_str: ", config.Envs.DatabaseDSN)
 }
 
 func Ping() error {

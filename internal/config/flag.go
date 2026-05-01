@@ -13,12 +13,10 @@ var Envs struct {
 }
 
 func ParseFlag() {
-	postgresConnStr := "postgres://postgres:postgres@localhost:5432/shorten_url_db"
-
 	flag.StringVar(&Envs.RunAddr, "a", "localhost:8080", "address and port to run server")
 	flag.StringVar(&Envs.BaseURL, "b", "http://localhost:8080", "Base URL")
-	flag.StringVar(&Envs.FileStoragePath, "f", "shortenUrlList.json", "Base URL")
-	flag.StringVar(&Envs.DatabaseDSN, "d", postgresConnStr, "Base URL")
+	flag.StringVar(&Envs.FileStoragePath, "f", "shortenUrlList.json", "file storage")
+	flag.StringVar(&Envs.DatabaseDSN, "d", "postgres://postgres:postgres@localhost:5432/shorten_url_db", "connection string to DB")
 
 	flag.Parse()
 
