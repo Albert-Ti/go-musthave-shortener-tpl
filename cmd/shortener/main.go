@@ -1,8 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config/db"
@@ -16,6 +18,8 @@ import (
 
 func main() {
 	config.ParseFlag()
+
+	fmt.Println(os.Getenv("DATABASE_DSN"))
 
 	shortenURLStorage, e := repository.NewShortenURLStorage()
 	if e != nil {
