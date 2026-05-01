@@ -35,10 +35,11 @@ func main() {
 	r.Post("/", handler.CreateShortenURL(shortenUrlService))
 	r.Get("/{id}", handler.RedirectByKeyURL(shortenUrlService))
 	r.Post("/api/shorten", handler.CreateShortenURLJSON(shortenUrlService))
+	r.Get("/ping", db.PingConnection(shortenUrlService))
 
 	slog.Info("Running server", "host", config.Envs.RunAddr)
 
-	db.Init()
+	db.Connection()
 	err := http.ListenAndServe(config.Envs.RunAddr, r)
 
 	if err != nil {
