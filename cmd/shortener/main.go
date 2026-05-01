@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config/db"
@@ -18,8 +16,6 @@ import (
 
 func main() {
 	config.ParseFlag()
-
-	fmt.Println(os.Getenv("DATABASE_DSN"))
 
 	shortenURLStorage, e := repository.NewShortenURLStorage()
 	if e != nil {
@@ -49,7 +45,6 @@ func main() {
 
 	slog.Info("Running server", "host", config.Envs.RunAddr)
 
-	db.Connection()
 	err := http.ListenAndServe(config.Envs.RunAddr, r)
 
 	if err != nil {
