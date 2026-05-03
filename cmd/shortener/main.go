@@ -17,13 +17,13 @@ import (
 func main() {
 	config.ParseFlag()
 
-	shortenURLStorage, e := repository.NewShortenURLStorage()
+	repo, e := repository.NewShortenURLRepository()
 	if e != nil {
 		panic(e)
 	}
-	defer shortenURLStorage.Close()
+	defer repo.Close()
 
-	shortenUrlService := service.NewShortenURLService(shortenURLStorage)
+	shortenUrlService := service.NewShortenURLService(repo)
 
 	r := chi.NewRouter()
 

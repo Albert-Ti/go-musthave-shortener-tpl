@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -15,16 +16,15 @@ import (
 )
 
 func TestRedirectByKeyURL(t *testing.T) {
-	config.Envs.FileStoragePath = "test.json"
-	shortenURLStorage, e := repository.NewShortenURLStorage()
+	tmpDir := t.TempDir()
+	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
+	repo, e := repository.NewShortenURLRepository()
 	if e != nil {
 		panic(e)
 	}
-	defer func() {
-		shortenURLStorage.Close()
-		shortenURLStorage.Remove()
-	}()
-	shortenUrlService := service.NewShortenURLService(shortenURLStorage)
+	defer repo.Close()
+
+	shortenUrlService := service.NewShortenURLService(repo)
 	shortenUrlService.Set("http://yandex.ru")
 
 	type want struct {
