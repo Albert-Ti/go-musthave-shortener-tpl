@@ -2,6 +2,7 @@ package handler
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -23,7 +24,8 @@ import (
 func TestCreateShortURLJSON(t *testing.T) {
 	tmpDir := t.TempDir()
 	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
-	repo, e := repository.NewShortenURLRepository()
+
+	repo, e := repository.NewShortenURLRepository(context.Background())
 	if e != nil {
 		panic(e)
 	}

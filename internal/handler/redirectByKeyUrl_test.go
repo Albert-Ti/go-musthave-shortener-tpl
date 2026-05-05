@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -18,7 +19,8 @@ import (
 func TestRedirectByKeyURL(t *testing.T) {
 	tmpDir := t.TempDir()
 	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
-	repo, e := repository.NewShortenURLRepository()
+
+	repo, e := repository.NewShortenURLRepository(context.Background())
 	if e != nil {
 		panic(e)
 	}
@@ -26,6 +28,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 
 	shortenUrlService := service.NewShortenURLService(repo)
 	shortenUrlService.Set("http://yandex.ru")
+	getURL, _ := shortenUrlService.Get("key_1")
 
 	type want struct {
 		method   string
@@ -43,7 +46,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 			endpoint: "/key_1",
 			want: want{
 				method:   http.MethodGet,
-				location: shortenUrlService.Get("key_1"),
+				location: getURL,
 				code:     http.StatusTemporaryRedirect,
 			},
 		},

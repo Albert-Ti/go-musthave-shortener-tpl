@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
@@ -16,7 +17,9 @@ import (
 func main() {
 	config.ParseFlag()
 
-	repo, e := repository.NewShortenURLRepository()
+	ctx := context.Background()
+	repo, e := repository.NewShortenURLRepository(ctx)
+
 	if e != nil {
 		panic(e)
 	}

@@ -35,7 +35,11 @@ func CreateShortenURL(shortenUrlService *service.ShortenURLService) http.Handler
 			return
 		}
 
-		keyURL := shortenUrlService.Set(string(body))
+		keyURL, err := shortenUrlService.Set(string(body))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusCreated)

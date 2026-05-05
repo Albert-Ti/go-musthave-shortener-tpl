@@ -16,7 +16,12 @@ func RedirectByKeyURL(shortenUrlService *service.ShortenURLService) http.Handler
 
 		param := strings.TrimPrefix(r.URL.Path, "/")
 
-		url := shortenUrlService.Get(param)
+		url, err := shortenUrlService.Get(param)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		if url == "" {
 			http.Error(w, "URL not found", http.StatusBadRequest)
 			return

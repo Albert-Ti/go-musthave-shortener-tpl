@@ -1,7 +1,6 @@
 package service
 
 import (
-	"log/slog"
 	"strconv"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
@@ -17,20 +16,22 @@ func NewShortenURLService(r repository.ShortenURLRepository) *ShortenURLService 
 	}
 }
 
-func (u *ShortenURLService) Get(key string) string {
+func (u *ShortenURLService) Get(key string) (string, error) {
 	return u.repository.Get(key)
 }
 
-func (u *ShortenURLService) Set(url string) string {
+func (u *ShortenURLService) Set(url string) (string, error) {
 	id, err := u.repository.Length()
 	if err != nil {
-		slog.Error(err.Error())
+		return "", err
 	}
 
-	key := "key_" + strconv.Itoa(id)
-	u.repository.Save(key, url)
+	key := "key_" + strconv.Itoa(id+1)
+	if e := u.repository.Save(key, url); e != nil {
+		return "", e
+	}
 
-	return key
+	return key, nil
 }
 
 func (u *ShortenURLService) Ping() error {

@@ -18,38 +18,40 @@ type shortenURLRecord struct {
 	url string
 }
 
-func NewPostgresStorage(path string) (*PostgresStorage, error) {
-	ctx := context.Background()
+func NewPostgresStorage(path string, ctx context.Context) (*PostgresStorage, error) {
 	conn, err := pgx.Connect(ctx, path)
 	if err != nil {
 		return nil, err
 	}
+
 	return &PostgresStorage{
 		ctx:  ctx,
 		conn: conn,
 	}, nil
 }
 
-func (pg *PostgresStorage) Get(key string) string {
+func (pg *PostgresStorage) Get(key string) (string, error) {
 	var u shortenURLRecord
 
 	sql := "SELECT key, url FROM shorten_url WHERE key = $1"
 
 	err := pg.conn.QueryRow(pg.ctx, sql, key).Scan(&u.key, &u.url)
 	if err != nil {
-		slog.Error(err.Error())
+		return "", err
 	}
 
-	return u.url
+	return u.url, nil
 }
 
-func (pg *PostgresStorage) Save(key string, url string) {
-	sql := "INSERT INTO shorten_url (key, url) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING"
+func (pg *PostgresStorage) Save(key string, url string) error {
+	sql := "INSERT INTO shorten_url (key, url) VALUES ($1, $2)"
 
 	_, err := pg.conn.Exec(pg.ctx, sql, key, url)
 	if err != nil {
 		slog.Error(err.Error())
 	}
+
+	return nil
 }
 
 func (pg *PostgresStorage) Length() (int, error) {
