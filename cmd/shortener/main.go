@@ -18,7 +18,7 @@ func main() {
 	config.ParseFlag()
 
 	ctx := context.Background()
-	repo, e := repository.NewShortenURLRepository(ctx)
+	repo, e := repository.NewRepository(ctx)
 
 	if e != nil {
 		panic(e)

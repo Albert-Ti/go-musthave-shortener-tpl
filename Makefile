@@ -46,4 +46,7 @@ migrate-reset: migrate-drop migrate-up
 	@echo "Database reset and migrations reapplied"
 
 docker-up:
-	docker compose up -d --build
+	docker compose up -d --force-recreate
+
+docker-down:
+	docker compose down

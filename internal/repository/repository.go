@@ -8,7 +8,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 )
 
-type ShortenURLRepository interface {
+type Repository interface {
 	Get(key string) (string, error)
 	Save(key string, value string) error
 	Length() (int, error)
@@ -16,7 +16,7 @@ type ShortenURLRepository interface {
 	Ping() error
 }
 
-func NewShortenURLRepository(ctx context.Context) (ShortenURLRepository, error) {
+func NewRepository(ctx context.Context) (Repository, error) {
 	fmt.Println(config.Envs.DatabaseDSN)
 
 	if config.Envs.DatabaseDSN != "" {

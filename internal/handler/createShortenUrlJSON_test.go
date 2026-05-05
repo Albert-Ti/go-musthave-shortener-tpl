@@ -25,7 +25,7 @@ func TestCreateShortURLJSON(t *testing.T) {
 	tmpDir := t.TempDir()
 	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
 
-	repo, e := repository.NewShortenURLRepository(context.Background())
+	repo, e := repository.NewRepository(context.Background())
 	if e != nil {
 		panic(e)
 	}

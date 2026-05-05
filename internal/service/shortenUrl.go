@@ -7,10 +7,10 @@ import (
 )
 
 type ShortenURLService struct {
-	repository repository.ShortenURLRepository
+	repository repository.Repository
 }
 
-func NewShortenURLService(r repository.ShortenURLRepository) *ShortenURLService {
+func NewShortenURLService(r repository.Repository) *ShortenURLService {
 	return &ShortenURLService{
 		repository: r,
 	}
