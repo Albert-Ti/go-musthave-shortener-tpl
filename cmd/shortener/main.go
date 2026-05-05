@@ -25,7 +25,7 @@ func main() {
 	}
 	defer repo.Close()
 
-	shortenUrlService := service.NewShortenURLService(repo)
+	svc := service.NewService(repo)
 
 	r := chi.NewRouter()
 
@@ -34,11 +34,11 @@ func main() {
 	r.Use(myMiddleware.WithLogging)
 	r.Use(myMiddleware.GzipCompress)
 
-	r.Post("/", handler.CreateShortenURL(shortenUrlService))
-	r.Get("/{id}", handler.RedirectByKeyURL(shortenUrlService))
-	r.Get("/ping", handler.PingDatabase(shortenUrlService))
-	r.Post("/api/shorten", handler.CreateShortenURLJSON(shortenUrlService))
-	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(shortenUrlService))
+	r.Post("/", handler.CreateShortenURL(svc))
+	r.Get("/{id}", handler.RedirectByKeyURL(svc))
+	r.Get("/ping", handler.PingDatabase(svc))
+	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc))
+	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(svc))
 
 	slog.Info("Running server", "host", config.Envs.RunAddr)
 

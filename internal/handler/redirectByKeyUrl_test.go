@@ -26,9 +26,9 @@ func TestRedirectByKeyURL(t *testing.T) {
 	}
 	defer repo.Close()
 
-	shortenUrlService := service.NewShortenURLService(repo)
-	shortenUrlService.Set("http://yandex.ru")
-	getURL, _ := shortenUrlService.Get("key_1")
+	svc := service.NewService(repo)
+	svc.Set("http://yandex.ru")
+	getURL, _ := svc.Get("key_1")
 
 	type want struct {
 		method   string
@@ -76,7 +76,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 			r := httptest.NewRequest(tt.want.method, tt.endpoint, nil)
 			w := httptest.NewRecorder()
 
-			redirectHandler := RedirectByKeyURL(shortenUrlService)
+			redirectHandler := RedirectByKeyURL(svc)
 			redirectHandler(w, r)
 
 			result := w.Result()

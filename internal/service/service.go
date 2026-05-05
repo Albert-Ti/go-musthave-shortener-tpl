@@ -6,21 +6,21 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 )
 
-type ShortenURLService struct {
+type Service struct {
 	repository repository.Repository
 }
 
-func NewShortenURLService(r repository.Repository) *ShortenURLService {
-	return &ShortenURLService{
+func NewService(r repository.Repository) *Service {
+	return &Service{
 		repository: r,
 	}
 }
 
-func (u *ShortenURLService) Get(key string) (string, error) {
+func (u *Service) Get(key string) (string, error) {
 	return u.repository.Get(key)
 }
 
-func (u *ShortenURLService) Set(url string) (string, error) {
+func (u *Service) Set(url string) (string, error) {
 	id, err := u.repository.Length()
 	if err != nil {
 		return "", err
@@ -34,6 +34,6 @@ func (u *ShortenURLService) Set(url string) (string, error) {
 	return key, nil
 }
 
-func (u *ShortenURLService) Ping() error {
+func (u *Service) Ping() error {
 	return u.repository.Ping()
 }

@@ -31,9 +31,9 @@ func TestCreateShortURLJSON(t *testing.T) {
 	}
 	defer repo.Close()
 
-	shortenURLService := service.NewShortenURLService(repo)
+	svc := service.NewService(repo)
 
-	handler := CreateShortenURLJSON(shortenURLService)
+	handler := CreateShortenURLJSON(svc)
 	srv := httptest.NewServer(middleware.GzipCompress(handler))
 
 	defer srv.Close()

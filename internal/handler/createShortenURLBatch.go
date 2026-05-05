@@ -6,7 +6,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 )
 
-func CreateShortenURLBatch(shortenUrlService *service.ShortenURLService) http.HandlerFunc {
+func CreateShortenURLBatch(svc *service.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		w.Write([]byte("++++"))

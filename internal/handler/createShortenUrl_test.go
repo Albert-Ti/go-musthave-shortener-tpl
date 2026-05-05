@@ -27,9 +27,9 @@ func TestCreateShortURL(t *testing.T) {
 	}
 	defer repo.Close()
 
-	shortenUrlService := service.NewShortenURLService(repo)
+	svc := service.NewService(repo)
 
-	handler := CreateShortenURL(shortenUrlService)
+	handler := CreateShortenURL(svc)
 	srv := httptest.NewServer(handler)
 
 	defer srv.Close()
