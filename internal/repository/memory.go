@@ -16,10 +16,14 @@ func (u *MemoryStorage) Save(key string, url string) {
 	u.urls[key] = url
 }
 
-func (u *MemoryStorage) Length() int {
-	return len(u.urls) + 1
+func (u *MemoryStorage) Length() (int, error) {
+	return len(u.urls) + 1, nil
 }
 
 func (u *MemoryStorage) Close() error {
-	return u.Close()
+	return nil
+}
+
+func (u *MemoryStorage) Ping() error {
+	return nil
 }

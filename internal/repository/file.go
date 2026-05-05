@@ -3,6 +3,7 @@ package repository
 import (
 	"encoding/json"
 	"io"
+	"log/slog"
 	"os"
 )
 
@@ -51,8 +52,12 @@ func (u *FileStorage) Get(key string) string {
 }
 
 func (u *FileStorage) Save(key string, url string) {
+	id, err := u.Length()
+	if err != nil {
+		slog.Error(err.Error())
+	}
 	record := &fileUrlRecord{
-		Uuid:        u.Length(),
+		Uuid:        id,
 		ShortURL:    key,
 		OriginalURL: url,
 	}
@@ -63,10 +68,14 @@ func (u *FileStorage) Save(key string, url string) {
 		panic(err)
 	}
 }
-func (u *FileStorage) Length() int {
-	return len(u.urls) + 1
+func (u *FileStorage) Length() (int, error) {
+	return len(u.urls) + 1, nil
 }
 
 func (u *FileStorage) Close() error {
 	return u.element.Close()
+}
+
+func (u *FileStorage) Ping() error {
+	return nil
 }

@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
@@ -10,14 +10,17 @@ import (
 type ShortenURLRepository interface {
 	Get(key string) string
 	Save(key string, value string)
-	Length() int
+	Length() (int, error)
 	Close() error
+	Ping() error
 }
 
 func NewShortenURLRepository() (ShortenURLRepository, error) {
+	fmt.Println(config.Envs.DatabaseDSN)
+
 	if config.Envs.DatabaseDSN != "" {
 		slog.Info("Using database storage")
-		return nil, errors.New("")
+		return NewPostgresStorage(config.Envs.DatabaseDSN)
 	}
 
 	if config.Envs.FileStoragePath != "" {
@@ -25,6 +28,6 @@ func NewShortenURLRepository() (ShortenURLRepository, error) {
 		return NewFileStorage(config.Envs.FileStoragePath)
 	}
 
-	slog.Info("Using in-memory storage")
+	slog.Info("Using memory storage")
 	return NewMemoryStorage()
 }
