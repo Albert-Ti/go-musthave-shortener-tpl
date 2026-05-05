@@ -1,6 +1,6 @@
 CREATE TABLE shorten_url (
   id SERIAL PRIMARY KEY,
-  key VARCHAR(30) NOT NULL,
+  key VARCHAR(100) NOT NULL,
   url VARCHAR(255) NOT NULL
 );
 

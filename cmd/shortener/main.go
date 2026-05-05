@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config/db"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
 	myMiddleware "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
@@ -34,14 +33,9 @@ func main() {
 
 	r.Post("/", handler.CreateShortenURL(shortenUrlService))
 	r.Get("/{id}", handler.RedirectByKeyURL(shortenUrlService))
+	r.Get("/ping", handler.PingDatabase(shortenUrlService))
 	r.Post("/api/shorten", handler.CreateShortenURLJSON(shortenUrlService))
-	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
-		if err := db.Ping(); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	})
+	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(shortenUrlService))
 
 	slog.Info("Running server", "host", config.Envs.RunAddr)
 

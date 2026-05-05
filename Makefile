@@ -6,6 +6,12 @@ MIGRATIONS_PATH = ./migrations
 run:
 	go run cmd/shortener/main.go
 
+run-file:
+	go run cmd/shortener/main.go -f="file_storage.json"
+
+run-postgres:
+	go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db"
+
 ping:
 	curl http://localhost:8080/ping -i
 
