@@ -5,6 +5,7 @@ go 1.25.4
 require (
 	github.com/go-chi/chi v1.5.5
 	github.com/go-chi/chi/v5 v5.2.5
+	github.com/golang/mock v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/stretchr/testify v1.11.1
 )
