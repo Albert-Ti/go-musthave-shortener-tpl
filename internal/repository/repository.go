@@ -25,8 +25,8 @@ func NewRepository(ctx context.Context) (Repository, error) {
 	fmt.Println(config.Envs.DatabaseDSN)
 
 	if config.Envs.DatabaseDSN != "" {
-		slog.Info("Использование хранилища базы данных")
-		slog.Info("Применяем миграции к базе данных...")
+		slog.Info("Using database storage")
+		slog.Info("Applying migrations to the database...")
 
 		m, err := migrate.New("file://migrations", config.Envs.DatabaseDSN)
 		if err != nil {
@@ -36,24 +36,24 @@ func NewRepository(ctx context.Context) (Repository, error) {
 
 		err = m.Up()
 		if err != nil && err != migrate.ErrNoChange {
-			slog.Error("Не удалось выполнить миграции", "error", err)
+			slog.Error("Migrations failed", "error", err)
 			return nil, err
 		}
 
 		if err == migrate.ErrNoChange {
-			slog.Info("Схема базы данных актуальна, миграции не требуются")
+			slog.Info("The database schema is up-to-date and no migrations are required")
 		} else {
-			slog.Info("Миграции успешно применены")
+			slog.Info("Migrations have been successfully applied")
 		}
 
 		return NewPostgresStorage(config.Envs.DatabaseDSN, ctx)
 	}
 
 	if config.Envs.FileStoragePath != "" {
-		slog.Info("Использование файлового хранилища", "filePath", config.Envs.FileStoragePath)
+		slog.Info("Using file storage", "filePath", config.Envs.FileStoragePath)
 		return NewFileStorage(config.Envs.FileStoragePath)
 	}
 
-	slog.Info("Использование памяти")
+	slog.Info("Using memory storage")
 	return NewMemoryStorage()
 }
