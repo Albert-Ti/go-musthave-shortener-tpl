@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateShortenURLBatchWithGomock(t *testing.T) {
+func TestCreateShortenURLBatch(t *testing.T) {
 	tests := []struct {
 		name        string
 		method      string
@@ -53,7 +53,7 @@ func TestCreateShortenURLBatchWithGomock(t *testing.T) {
 			},
 		},
 		{
-			name:        "Case_3 BatchSave error",
+			name:        "Case_2 BatchSave error",
 			method:      http.MethodPost,
 			contentType: "application/json",
 			body: []model.JSONBatchReq{
@@ -74,7 +74,7 @@ func TestCreateShortenURLBatchWithGomock(t *testing.T) {
 			response:   nil,
 		},
 		{
-			name:        "Case_4 invalid HTTP method",
+			name:        "Case_2 invalid HTTP method",
 			method:      http.MethodGet,
 			contentType: "application/json",
 			body:        []model.JSONBatchReq{},
@@ -83,7 +83,7 @@ func TestCreateShortenURLBatchWithGomock(t *testing.T) {
 			response:    nil,
 		},
 		{
-			name:        "Case_5 invalid content type",
+			name:        "Case_3 invalid content type",
 			method:      http.MethodPost,
 			contentType: "text/plain",
 			body:        []model.JSONBatchReq{},
