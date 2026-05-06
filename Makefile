@@ -9,7 +9,7 @@ run:
 run-file:
 	go run cmd/shortener/main.go -f="file_storage.json"
 
-run-postgres:
+run-postgres: docker-up
 	go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db"
 
 ping:

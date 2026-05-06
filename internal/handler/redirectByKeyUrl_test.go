@@ -27,7 +27,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 	defer repo.Close()
 
 	svc := service.NewService(repo)
-	svc.Set("http://yandex.ru")
+	svc.Save("http://yandex.ru")
 	getURL, _ := svc.Get("key_1")
 
 	type want struct {

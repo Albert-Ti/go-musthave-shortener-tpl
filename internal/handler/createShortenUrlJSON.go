@@ -24,7 +24,7 @@ func CreateShortenURLJSON(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
-		var dec model.ShortenUrlRequest
+		var dec model.JSONReq
 		if err := json.NewDecoder(r.Body).Decode(&dec); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -35,7 +35,7 @@ func CreateShortenURLJSON(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
-		keyURL, err := svc.Set(dec.URL)
+		keyURL, err := svc.Save(dec.URL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -43,7 +43,7 @@ func CreateShortenURLJSON(svc *service.Service) http.HandlerFunc {
 
 		fullURL := fmt.Sprintf("%s/%s", config.Envs.BaseURL, keyURL)
 
-		resp := model.ShortenUrlResponse{Result: fullURL}
+		resp := model.JSONResp{Result: fullURL}
 
 		w.Header().Set("Content-type", "application/json")
 		w.WriteHeader(http.StatusCreated)

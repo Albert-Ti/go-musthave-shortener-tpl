@@ -6,11 +6,13 @@ import (
 	"log/slog"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 )
 
 type Repository interface {
 	Get(key string) (string, error)
 	Save(key string, value string) error
+	BatchSave(keys []string, batch []model.JSONBatchReq) error
 	Length() (int, error)
 	Close() error
 	Ping() error

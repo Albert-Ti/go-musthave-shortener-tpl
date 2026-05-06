@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -44,11 +45,40 @@ func (pg *PostgresStorage) Get(key string) (string, error) {
 }
 
 func (pg *PostgresStorage) Save(key string, url string) error {
-	sql := "INSERT INTO shorten_url (key, url) VALUES ($1, $2)"
+	sql := "INSERT INTO shorten_url (key, url) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING"
 
 	_, err := pg.conn.Exec(pg.ctx, sql, key, url)
 	if err != nil {
 		slog.Error(err.Error())
+	}
+
+	return nil
+}
+
+func (pg *PostgresStorage) BatchSave(keys []string, batch []model.JSONBatchReq) error {
+	tx, err := pg.conn.BeginTx(pg.ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback(pg.ctx)
+		}
+	}()
+
+	for i, v := range batch {
+		sql := "INSERT INTO shorten_url (key, url, correlation_id) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING"
+		_, err = tx.Exec(pg.ctx, sql, keys[i], v.OriginalURL, v.CorrelationID)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	err = tx.Commit(pg.ctx)
+	if err != nil {
+		return err
 	}
 
 	return nil

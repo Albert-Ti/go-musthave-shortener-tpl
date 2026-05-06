@@ -1,6 +1,7 @@
 CREATE TABLE shorten_url (
   id SERIAL PRIMARY KEY,
-  key VARCHAR(100) NOT NULL,
-  url VARCHAR(255) NOT NULL
+  key VARCHAR(100) UNIQUE NOT NULL,
+  url VARCHAR(255) NOT NULL,
+  correlation_id VARCHAR(255)
 );
 

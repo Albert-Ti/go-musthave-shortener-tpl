@@ -3,6 +3,7 @@ package service
 import (
 	"strconv"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 )
 
@@ -20,18 +21,38 @@ func (u *Service) Get(key string) (string, error) {
 	return u.repository.Get(key)
 }
 
-func (u *Service) Set(url string) (string, error) {
-	id, err := u.repository.Length()
-	if err != nil {
-		return "", err
-	}
+func (u *Service) Save(url string) (string, error) {
+	len, _ := u.repository.Length()
+	key := "key_" + strconv.Itoa(len+1)
 
-	key := "key_" + strconv.Itoa(id+1)
 	if e := u.repository.Save(key, url); e != nil {
 		return "", e
 	}
 
 	return key, nil
+}
+
+func (u *Service) BatchSave(batch []model.JSONBatchReq) ([]model.JSONBatchResp, error) {
+	l, _ := u.repository.Length()
+
+	result := make([]model.JSONBatchResp, len(batch))
+	keys := make([]string, len(batch))
+
+	for i, v := range batch {
+		key := "key_" + strconv.Itoa(l+1)
+		keys[i] = key
+		result[i] = model.JSONBatchResp{
+			ShortURL:      key,
+			CorrelationID: v.CorrelationID,
+		}
+
+		l++
+	}
+	if err := u.repository.BatchSave(keys, batch); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func (u *Service) Ping() error {

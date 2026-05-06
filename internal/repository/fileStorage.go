@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 )
 
 type FileStorage struct {
@@ -12,7 +14,7 @@ type FileStorage struct {
 	urls    map[string]string
 }
 
-type fileUrlRecord struct {
+type filRecord struct {
 	Uuid        int    `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
@@ -28,7 +30,7 @@ func NewFileStorage(path string) (*FileStorage, error) {
 	decoder := json.NewDecoder(file)
 
 	for {
-		var record fileUrlRecord
+		var record filRecord
 		err := decoder.Decode(&record)
 		if err == io.EOF {
 			break
@@ -51,12 +53,10 @@ func (u *FileStorage) Get(key string) (string, error) {
 }
 
 func (u *FileStorage) Save(key string, url string) error {
-	id, err := u.Length()
-	if err != nil {
-		return err
-	}
-	record := &fileUrlRecord{
-		Uuid:        id,
+	len, _ := u.Length()
+
+	record := &filRecord{
+		Uuid:        len + 1,
 		ShortURL:    key,
 		OriginalURL: url,
 	}
@@ -65,6 +65,28 @@ func (u *FileStorage) Save(key string, url string) error {
 
 	if err := u.encoder.Encode(&record); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (u *FileStorage) BatchSave(keys []string, batch []model.JSONBatchReq) error {
+	len, _ := u.Length()
+
+	for i, v := range batch {
+
+		record := &filRecord{
+			Uuid:        len + 1,
+			ShortURL:    keys[i],
+			OriginalURL: v.OriginalURL,
+		}
+		len++
+
+		u.urls[keys[i]] = v.OriginalURL
+
+		if err := u.encoder.Encode(&record); err != nil {
+			return err
+		}
 	}
 
 	return nil
