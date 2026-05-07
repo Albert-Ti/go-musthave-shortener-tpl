@@ -33,10 +33,15 @@ func CreateShortenURLBatch(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
+		if len(resp) == 0 {
+			http.Error(w, "Data is empty", http.StatusNoContent)
+			return
+		}
+
 		w.Header().Set("Content-type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 
-		if err := json.NewEncoder(w).Encode(&resp); err != nil {
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

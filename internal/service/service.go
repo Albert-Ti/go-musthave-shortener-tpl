@@ -33,20 +33,27 @@ func (u *Service) Save(url string) (string, error) {
 }
 
 func (u *Service) BatchSave(batch []model.JSONBatchReq) ([]model.JSONBatchResp, error) {
-	l, _ := u.repository.Length()
+	if len(batch) == 0 {
+		return []model.JSONBatchResp{}, nil
+	}
+
+	length, err := u.repository.Length()
+	if err != nil {
+		return nil, err
+	}
 
 	result := make([]model.JSONBatchResp, len(batch))
 	keys := make([]string, len(batch))
 
 	for i, v := range batch {
-		key := "key_" + strconv.Itoa(l+1)
+		key := "key_" + strconv.Itoa(length+1)
 		keys[i] = key
 		result[i] = model.JSONBatchResp{
 			ShortURL:      key,
 			CorrelationID: v.CorrelationID,
 		}
 
-		l++
+		length++
 	}
 	if err := u.repository.BatchSave(keys, batch); err != nil {
 		return nil, err

@@ -31,8 +31,8 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			method:      http.MethodPost,
 			contentType: "application/json",
 			body: []model.JSONBatchReq{
-				{CorrelationID: "ID1", OriginalURL: "https://example.com/1"},
-				{CorrelationID: "ID2", OriginalURL: "https://example.com/2"},
+				{CorrelationID: "ID1", OriginalURL: "https://google.com"},
+				{CorrelationID: "ID2", OriginalURL: "https://yandex.ru"},
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				// Ожидаем вызов Length
@@ -57,7 +57,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			method:      http.MethodPost,
 			contentType: "application/json",
 			body: []model.JSONBatchReq{
-				{CorrelationID: "id-1", OriginalURL: "https://example.com/1"},
+				{CorrelationID: "ID1", OriginalURL: "https://google.com"},
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
@@ -90,6 +90,35 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			setupMock:   func(mock *mocks.MockRepository) {},
 			statusCode:  http.StatusBadRequest,
 			response:    nil,
+		},
+		{
+			name:        "Case_4 Data is empty",
+			method:      http.MethodPost,
+			contentType: "application/json",
+			body:        []model.JSONBatchReq{},
+			setupMock:   func(mock *mocks.MockRepository) {},
+			statusCode:  http.StatusNoContent,
+			response:    nil,
+		},
+
+		{
+			name:        "Case_5 Length error",
+			method:      http.MethodPost,
+			contentType: "application/json",
+			body: []model.JSONBatchReq{
+				{CorrelationID: "ID1", OriginalURL: "https://google.com"},
+			},
+			setupMock: func(mock *mocks.MockRepository) {
+				mock.EXPECT().
+					Length().
+					Return(0, errors.New("DB error"))
+
+				mock.EXPECT().
+					BatchSave(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			statusCode: http.StatusInternalServerError,
+			response:   nil,
 		},
 	}
 
