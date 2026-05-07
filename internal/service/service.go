@@ -3,6 +3,7 @@ package service
 import (
 	"strconv"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 )
@@ -49,7 +50,7 @@ func (u *Service) BatchSave(batch []model.JSONBatchReq) ([]model.JSONBatchResp, 
 		key := "key_" + strconv.Itoa(length+1)
 		keys[i] = key
 		result[i] = model.JSONBatchResp{
-			ShortURL:      key,
+			ShortURL:      config.Envs.BaseURL + "/" + key,
 			CorrelationID: v.CorrelationID,
 		}
 

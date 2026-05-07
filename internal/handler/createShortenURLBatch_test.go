@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository/mocks"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
@@ -48,8 +49,8 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			statusCode: http.StatusCreated,
 			response: []model.JSONBatchResp{
-				{ShortURL: "key_1", CorrelationID: "ID1"},
-				{ShortURL: "key_2", CorrelationID: "ID2"},
+				{ShortURL: config.Envs.BaseURL + "/" + "key_1", CorrelationID: "ID1"},
+				{ShortURL: config.Envs.BaseURL + "/" + "key_2", CorrelationID: "ID2"},
 			},
 		},
 		{
