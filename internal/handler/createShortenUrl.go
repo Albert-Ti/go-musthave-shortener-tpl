@@ -37,7 +37,7 @@ func CreateShortenURL(svc *service.Service) http.HandlerFunc {
 
 		keyURL, err := svc.Save(string(body))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
 

@@ -35,15 +35,14 @@ func NewRepository(ctx context.Context) (Repository, error) {
 		defer m.Close()
 
 		err = m.Up()
-		if err != nil && err != migrate.ErrNoChange {
+		switch err {
+		case nil:
+			slog.Info("Migrations have been successfully applied")
+		case migrate.ErrNoChange:
+			slog.Info("The database schema is up-to-date and no migrations are required")
+		default:
 			slog.Error("Migrations failed", "error", err)
 			return nil, err
-		}
-
-		if err == migrate.ErrNoChange {
-			slog.Info("The database schema is up-to-date and no migrations are required")
-		} else {
-			slog.Info("Migrations have been successfully applied")
 		}
 
 		return NewPostgresStorage(config.Envs.DatabaseDSN, ctx)

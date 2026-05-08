@@ -2,10 +2,12 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 )
 
@@ -29,6 +31,10 @@ func CreateShortenURLBatch(svc *service.Service) http.HandlerFunc {
 
 		resp, err := svc.BatchSave(dec)
 		if err != nil {
+			if errors.Is(err, repository.ErrConflict) {
+				http.Error(w, err.Error(), http.StatusConflict)
+				return
+			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

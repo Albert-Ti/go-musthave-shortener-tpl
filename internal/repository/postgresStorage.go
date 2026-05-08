@@ -2,12 +2,18 @@ package repository
 
 import (
 	"context"
-	"log/slog"
+	"errors"
+	"fmt"
 	"time"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
+
+var ErrConflict error
 
 type PostgresStorage struct {
 	ctx  context.Context
@@ -45,13 +51,32 @@ func (pg *PostgresStorage) Get(key string) (string, error) {
 }
 
 func (pg *PostgresStorage) Save(key string, url string) error {
-	sql := "INSERT INTO shorten_url (key, url) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING"
+	sql := "INSERT INTO shorten_url (key, url) VALUES ($1, $2)"
 
+	var pgErr *pgconn.PgError
 	_, err := pg.conn.Exec(pg.ctx, sql, key, url)
 	if err != nil {
-		slog.Error(err.Error())
-	}
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == pgerrcode.UniqueViolation {
 
+				var existingKey string
+
+				err = pg.conn.QueryRow(pg.ctx,
+					`SELECT key FROM shorten_url WHERE url = $1`,
+					url,
+				).Scan(&existingKey)
+
+				if err != nil {
+					return err
+				}
+
+				ErrConflict = fmt.Errorf("%v/%v", config.Envs.BaseURL, existingKey)
+				return ErrConflict
+			}
+		}
+
+		return err
+	}
 	return nil
 }
 
@@ -60,18 +85,31 @@ func (pg *PostgresStorage) BatchSave(keys []string, batch []model.JSONBatchReq) 
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback(pg.ctx)
 
-	defer func() {
-		if err != nil {
-			tx.Rollback(pg.ctx)
-		}
-	}()
+	var pgErr *pgconn.PgError
 
 	for i, v := range batch {
-		sql := "INSERT INTO shorten_url (key, url, correlation_id) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING"
+		sql := "INSERT INTO shorten_url (key, url, correlation_id) VALUES ($1, $2, $3)"
 		_, err = tx.Exec(pg.ctx, sql, keys[i], v.OriginalURL, v.CorrelationID)
-		if err != nil {
-			return err
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == pgerrcode.UniqueViolation {
+
+				tx.Rollback(pg.ctx)
+
+				var existingKey string
+				err = pg.conn.QueryRow(pg.ctx,
+					`SELECT key FROM shorten_url WHERE url = $1`,
+					v.OriginalURL,
+				).Scan(&existingKey)
+
+				if err != nil {
+					return err
+				}
+
+				ErrConflict = fmt.Errorf("%v/%v", config.Envs.BaseURL, existingKey)
+				return ErrConflict
+			}
 		}
 
 	}

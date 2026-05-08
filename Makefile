@@ -18,16 +18,13 @@ ping:
 test:
 	go test ./...
 
-## migrate-create: Создать новый файл миграции (используйте: make migrate-create name=create_users_table)
 migrate-create:
 	@test -n "$(name)" || (echo "Error: name is required. Use: make migrate-create name=my_migration" && exit 1)
 	migrate create -ext sql -dir "$(MIGRATIONS_PATH)" -seq "$(name)"
 
-## migrate-up: Применить все ожидающие миграции
 migrate-up:
 	migrate -database "$(DB_URL)" -path "$(MIGRATIONS_PATH)" up
 
-## migrate-down: Откатить последнюю миграцию
 migrate-down:
 	migrate -database "$(DB_URL)" -path "$(MIGRATIONS_PATH)" down
 
@@ -50,3 +47,9 @@ docker-up:
 
 docker-down:
 	docker compose down
+
+docker-exec:
+	docker compose exec -t postgres bash
+
+mockgen:
+	mockgen -source=internal/repository/repository.go -destination=internal/repository/mocks/mock_repository.go -package=mocks 
