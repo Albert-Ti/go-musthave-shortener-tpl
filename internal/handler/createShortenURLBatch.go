@@ -32,7 +32,9 @@ func CreateShortenURLBatch(svc *service.Service) http.HandlerFunc {
 		resp, err := svc.BatchSave(dec)
 		if err != nil {
 			if errors.Is(err, repository.ErrConflict) {
-				http.Error(w, err.Error(), http.StatusConflict)
+				w.Header().Set("Content-type", "application/json")
+				w.WriteHeader(http.StatusConflict)
+				w.Write([]byte(err.Error()))
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)

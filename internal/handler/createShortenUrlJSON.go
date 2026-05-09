@@ -40,7 +40,9 @@ func CreateShortenURLJSON(svc *service.Service) http.HandlerFunc {
 		keyURL, err := svc.Save(dec.URL)
 		if err != nil {
 			if errors.Is(err, repository.ErrConflict) {
-				http.Error(w, err.Error(), http.StatusConflict)
+				w.Header().Set("Content-type", "application/json")
+				w.WriteHeader(http.StatusConflict)
+				w.Write([]byte(strings.TrimSpace(err.Error())))
 				return
 			}
 			http.Error(w, err.Error(), http.StatusInternalServerError)
