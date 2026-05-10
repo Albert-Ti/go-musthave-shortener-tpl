@@ -1,6 +1,8 @@
 package service
 
 import (
+	"errors"
+
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
@@ -21,9 +23,18 @@ func (u *Service) Get(key string) (string, error) {
 	return u.repository.Get(key)
 }
 
-func (u *Service) Save(url string) (string, error) {
+func (s *Service) Save(url string) (string, bool, error) {
 	key := GenerateUUID()
-	return u.repository.Save(key, url)
+
+	savedKey, err := s.repository.Save(key, url)
+	if err != nil {
+		if errors.Is(err, repository.ErrConflict) {
+			return savedKey, false, nil
+		}
+		return "", false, err
+	}
+
+	return savedKey, true, nil
 }
 
 func (u *Service) BatchSave(batch []model.JSONBatchReq) ([]model.JSONBatchResp, error) {

@@ -17,7 +17,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
-	testutils "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,7 +41,7 @@ func TestCreateShortURLJSON(t *testing.T) {
 
 	config.Envs.BaseURL = srv.URL
 
-	defer testutils.GenerateMockUUID()()
+	defer utils.GenerateMockUUID()()
 
 	reqJSON, err := json.Marshal(model.JSONReq{URL: "https://yandex.ru"})
 	require.NoError(t, err)

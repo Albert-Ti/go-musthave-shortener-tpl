@@ -35,16 +35,20 @@ func CreateShortenURL(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
-		keyURL, err := svc.Save(string(body))
+		keyURL, isNew, err := svc.Save(string(body))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		w.Header().Set("Content-type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusCreated)
-
 		fullURL := fmt.Sprintf("%s/%s", config.Envs.BaseURL, keyURL)
+		w.Header().Set("Content-type", "text/plain; charset=utf-8")
+
+		if !isNew {
+			w.WriteHeader(http.StatusConflict)
+		} else {
+			w.WriteHeader(http.StatusCreated)
+		}
 
 		w.Write([]byte(fullURL))
 	}

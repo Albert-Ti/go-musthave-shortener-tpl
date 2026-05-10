@@ -14,7 +14,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository/mocks"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
-	testutils "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +23,7 @@ import (
 func TestCreateShortenURLBatch(t *testing.T) {
 	config.Envs.BaseURL = "http://localhost:8080"
 
-	defer testutils.GenerateMockUUID()()
+	defer utils.GenerateMockUUID()()
 
 	tests := []struct {
 		name        string

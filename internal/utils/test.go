@@ -1,4 +1,4 @@
-package testutils
+package utils
 
 import "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 
