@@ -29,20 +29,17 @@ func CreateShortenURLBatch(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
-		resp, err := svc.BatchSave(dec)
-		if err != nil {
-			if errors.Is(err, repository.ErrConflict) {
-				w.Header().Set("Content-type", "application/json")
-				w.WriteHeader(http.StatusConflict)
-				w.Write([]byte(err.Error()))
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		if len(dec) == 0 {
+			http.Error(w, "Data is empty", http.StatusNoContent)
 			return
 		}
 
-		if len(resp) == 0 {
-			http.Error(w, "Data is empty", http.StatusNoContent)
+		resp, err := svc.BatchSave(dec)
+
+		if errors.Is(err, repository.ErrConflict) {
+			w.WriteHeader(http.StatusConflict)
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 

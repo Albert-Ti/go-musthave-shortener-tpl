@@ -3,17 +3,15 @@ package repository
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-var ErrConflict error
+var ErrConflict error = errors.New("URL is already exist")
 
 type PostgresStorage struct {
 	ctx  context.Context
@@ -40,9 +38,9 @@ func NewPostgresStorage(path string, ctx context.Context) (*PostgresStorage, err
 func (pg *PostgresStorage) Get(key string) (string, error) {
 	var u shortenURLRecord
 
-	sql := "SELECT key, url FROM shorten_url WHERE key = $1"
+	queryStr := "SELECT key, url FROM shorten_url WHERE key = $1"
 
-	err := pg.conn.QueryRow(pg.ctx, sql, key).Scan(&u.key, &u.url)
+	err := pg.conn.QueryRow(pg.ctx, queryStr, key).Scan(&u.key, &u.url)
 	if err != nil {
 		return "", err
 	}
@@ -50,65 +48,65 @@ func (pg *PostgresStorage) Get(key string) (string, error) {
 	return u.url, nil
 }
 
-func (pg *PostgresStorage) Save(key string, url string) error {
-	sql := "INSERT INTO shorten_url (key, url) VALUES ($1, $2)"
+func (pg *PostgresStorage) Save(key string, url string) (string, error) {
+	queryStr := "INSERT INTO shorten_url (key, url) VALUES ($1, $2)"
 
 	var pgErr *pgconn.PgError
-	_, err := pg.conn.Exec(pg.ctx, sql, key, url)
+	_, err := pg.conn.Exec(pg.ctx, queryStr, key, url)
 	if err != nil {
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
 
-				var existingKey string
+				var existKey string
 
-				err = pg.conn.QueryRow(pg.ctx,
+				err := pg.conn.QueryRow(pg.ctx,
 					`SELECT key FROM shorten_url WHERE url = $1`,
 					url,
-				).Scan(&existingKey)
+				).Scan(&existKey)
 
 				if err != nil {
-					return err
+					return "", err
 				}
-
-				ErrConflict = fmt.Errorf("%v/%v", config.Envs.BaseURL, existingKey)
-				return ErrConflict
+				return existKey, ErrConflict
 			}
 		}
-
-		return err
+		return "", err
 	}
-	return nil
+	return key, nil
 }
 
-func (pg *PostgresStorage) BatchSave(keys []string, batch []model.JSONBatchReq) error {
+func (pg *PostgresStorage) BatchSave(keys []string, batch []model.JSONBatchReq) (string, string, error) {
 	tx, err := pg.conn.BeginTx(pg.ctx, pgx.TxOptions{})
 	if err != nil {
-		return err
+		return "", "", err
 	}
 	defer tx.Rollback(pg.ctx)
 
 	var pgErr *pgconn.PgError
 
 	for i, v := range batch {
-		sql := "INSERT INTO shorten_url (key, url, correlation_id) VALUES ($1, $2, $3)"
-		_, err = tx.Exec(pg.ctx, sql, keys[i], v.OriginalURL, v.CorrelationID)
+		queryStr := "INSERT INTO shorten_url (key, url, correlation_id) VALUES ($1, $2, $3)"
+		_, err = tx.Exec(pg.ctx, queryStr, keys[i], v.OriginalURL, v.CorrelationID)
 		if errors.As(err, &pgErr) {
 			if pgErr.Code == pgerrcode.UniqueViolation {
 
 				tx.Rollback(pg.ctx)
 
-				var existingKey string
-				err = pg.conn.QueryRow(pg.ctx,
-					`SELECT key FROM shorten_url WHERE url = $1`,
+				var existKey string
+				var existID *string
+				err := pg.conn.QueryRow(pg.ctx,
+					`SELECT key, correlation_id FROM shorten_url WHERE url = $1`,
 					v.OriginalURL,
-				).Scan(&existingKey)
+				).Scan(&existKey, &existID)
 
 				if err != nil {
-					return err
+					return "", "", err
 				}
 
-				ErrConflict = fmt.Errorf("%v/%v", config.Envs.BaseURL, existingKey)
-				return ErrConflict
+				if existID != nil {
+					return existKey, *existID, ErrConflict
+				}
+				return existKey, "", ErrConflict
 			}
 		}
 
@@ -116,17 +114,17 @@ func (pg *PostgresStorage) BatchSave(keys []string, batch []model.JSONBatchReq) 
 
 	err = tx.Commit(pg.ctx)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 
-	return nil
+	return "", "", nil
 }
 
 func (pg *PostgresStorage) Length() (int, error) {
 	var length int
-	sql := "SELECT COUNT(*) FROM shorten_url"
+	queryStr := "SELECT COUNT(*) FROM shorten_url"
 
-	err := pg.conn.QueryRow(pg.ctx, sql).Scan(&length)
+	err := pg.conn.QueryRow(pg.ctx, queryStr).Scan(&length)
 
 	if err != nil {
 		return 0, err

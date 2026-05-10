@@ -23,19 +23,17 @@ func (u *Service) Get(key string) (string, error) {
 }
 
 func (u *Service) Save(url string) (string, error) {
-	len, _ := u.repository.Length()
-	key := "key_" + strconv.Itoa(len+1)
-
-	if e := u.repository.Save(key, url); e != nil {
-		return "", e
+	len, err := u.repository.Length()
+	if err != nil {
+		return "", err
 	}
-
-	return key, nil
+	key := "key_" + strconv.Itoa(len+1)
+	return u.repository.Save(key, url)
 }
 
 func (u *Service) BatchSave(batch []model.JSONBatchReq) ([]model.JSONBatchResp, error) {
 	if len(batch) == 0 {
-		return []model.JSONBatchResp{}, nil
+		return nil, nil
 	}
 
 	length, err := u.repository.Length()
@@ -56,7 +54,16 @@ func (u *Service) BatchSave(batch []model.JSONBatchReq) ([]model.JSONBatchResp, 
 
 		length++
 	}
-	if err := u.repository.BatchSave(keys, batch); err != nil {
+
+	existKey, existID, err := u.repository.BatchSave(keys, batch)
+
+	if existKey != "" {
+		return []model.JSONBatchResp{{
+			CorrelationID: existID,
+			ShortURL:      config.Envs.BaseURL + "/" + existKey,
+		},
+		}, err
+	} else if err != nil {
 		return nil, err
 	}
 

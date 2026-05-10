@@ -14,8 +14,8 @@ import (
 
 type Repository interface {
 	Get(key string) (string, error)
-	Save(key string, value string) error
-	BatchSave(keys []string, batch []model.JSONBatchReq) error
+	Save(key string, value string) (string, error)
+	BatchSave(keys []string, batch []model.JSONBatchReq) (existKey string, existID string, err error)
 	Length() (int, error)
 	Close() error
 	Ping() error
@@ -25,8 +25,7 @@ func NewRepository(ctx context.Context) (Repository, error) {
 	fmt.Println(config.Envs.DatabaseDSN)
 
 	if config.Envs.DatabaseDSN != "" {
-		slog.Info("Using database storage")
-		slog.Info("Applying migrations to the database...")
+		slog.Debug("Using database storage")
 
 		m, err := migrate.New("file://migrations", config.Envs.DatabaseDSN)
 		if err != nil {
@@ -37,9 +36,9 @@ func NewRepository(ctx context.Context) (Repository, error) {
 		err = m.Up()
 		switch err {
 		case nil:
-			slog.Info("Migrations have been successfully applied")
+			slog.Debug("Migrations have been successfully applied")
 		case migrate.ErrNoChange:
-			slog.Info("The database schema is up-to-date and no migrations are required")
+			slog.Debug("The database schema is up-to-date and no migrations are required")
 		default:
 			slog.Error("Migrations failed", "error", err)
 			return nil, err
@@ -49,10 +48,10 @@ func NewRepository(ctx context.Context) (Repository, error) {
 	}
 
 	if config.Envs.FileStoragePath != "" {
-		slog.Info("Using file storage", "filePath", config.Envs.FileStoragePath)
+		slog.Debug("Using file storage", "filePath", config.Envs.FileStoragePath)
 		return NewFileStorage(config.Envs.FileStoragePath)
 	}
 
-	slog.Info("Using memory storage")
+	slog.Debug("Using memory storage")
 	return NewMemoryStorage()
 }

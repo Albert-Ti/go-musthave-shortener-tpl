@@ -35,11 +35,13 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 }
 
 // BatchSave mocks base method.
-func (m *MockRepository) BatchSave(keys []string, batch []model.JSONBatchReq) error {
+func (m *MockRepository) BatchSave(keys []string, batch []model.JSONBatchReq) (string, string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BatchSave", keys, batch)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // BatchSave indicates an expected call of BatchSave.
@@ -107,11 +109,12 @@ func (mr *MockRepositoryMockRecorder) Ping() *gomock.Call {
 }
 
 // Save mocks base method.
-func (m *MockRepository) Save(key, value string) error {
+func (m *MockRepository) Save(key, value string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save", key, value)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Save indicates an expected call of Save.

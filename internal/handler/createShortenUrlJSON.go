@@ -3,7 +3,6 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -38,18 +37,14 @@ func CreateShortenURLJSON(svc *service.Service) http.HandlerFunc {
 		}
 
 		keyURL, err := svc.Save(dec.URL)
-		if err != nil {
-			if errors.Is(err, repository.ErrConflict) {
-				w.Header().Set("Content-type", "application/json")
-				w.WriteHeader(http.StatusConflict)
-				w.Write([]byte(strings.TrimSpace(err.Error())))
-				return
-			}
+		fullURL := config.Envs.BaseURL + "/" + keyURL
+
+		if errors.Is(err, repository.ErrConflict) {
+			w.WriteHeader(http.StatusConflict)
+		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		fullURL := fmt.Sprintf("%s/%s", config.Envs.BaseURL, keyURL)
 
 		resp := model.JSONResp{Result: fullURL}
 

@@ -43,7 +43,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 
 				mock.EXPECT().
 					BatchSave(gomock.Any(), gomock.Any()).
-					Return(nil).
+					Return("", "", nil).
 					Times(1)
 			},
 			statusCode: http.StatusCreated,
@@ -67,7 +67,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 
 				mock.EXPECT().
 					BatchSave(gomock.Any(), gomock.Any()).
-					Return(errors.New("database error")).
+					Return("", "", errors.New("database error")).
 					Times(1)
 			},
 			statusCode: http.StatusInternalServerError,

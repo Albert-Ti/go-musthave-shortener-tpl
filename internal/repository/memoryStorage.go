@@ -16,18 +16,18 @@ func (u *MemoryStorage) Get(key string) (string, error) {
 	return u.urls[key], nil
 }
 
-func (u *MemoryStorage) Save(key string, url string) error {
+func (u *MemoryStorage) Save(key string, url string) (string, error) {
 	u.urls[key] = url
 
-	return nil
+	return key, nil
 }
 
-func (u *MemoryStorage) BatchSave(keys []string, batch []model.JSONBatchReq) error {
+func (u *MemoryStorage) BatchSave(keys []string, batch []model.JSONBatchReq) (string, string, error) {
 	for i, v := range batch {
 		u.urls[keys[i]] = v.OriginalURL
 	}
 
-	return nil
+	return "", "", nil
 }
 
 func (u *MemoryStorage) Length() (int, error) {
