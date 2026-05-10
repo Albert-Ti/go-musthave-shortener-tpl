@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
@@ -12,18 +11,20 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"       // ← для чтения файлов
 )
 
+type BatchConflict struct {
+	Key           string
+	CorrelationID string
+}
+
 type Repository interface {
 	Get(key string) (string, error)
 	Save(key string, value string) (string, error)
-	BatchSave(keys []string, batch []model.JSONBatchReq) (existKey string, existID string, err error)
-	Length() (int, error)
+	BatchSave(keys []string, batch []model.JSONBatchReq) (BatchConflict, error)
 	Close() error
 	Ping() error
 }
 
 func NewRepository(ctx context.Context) (Repository, error) {
-	fmt.Println(config.Envs.DatabaseDSN)
-
 	if config.Envs.DatabaseDSN != "" {
 		slog.Debug("Using database storage")
 

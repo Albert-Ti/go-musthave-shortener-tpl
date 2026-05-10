@@ -22,16 +22,12 @@ func (u *MemoryStorage) Save(key string, url string) (string, error) {
 	return key, nil
 }
 
-func (u *MemoryStorage) BatchSave(keys []string, batch []model.JSONBatchReq) (string, string, error) {
+func (u *MemoryStorage) BatchSave(keys []string, batch []model.JSONBatchReq) (BatchConflict, error) {
 	for i, v := range batch {
 		u.urls[keys[i]] = v.OriginalURL
 	}
 
-	return "", "", nil
-}
-
-func (u *MemoryStorage) Length() (int, error) {
-	return len(u.urls), nil
+	return BatchConflict{}, nil
 }
 
 func (u *MemoryStorage) Close() error {

@@ -1,3 +1,4 @@
+// internal/handler/createShortenURLBatch_test.go
 package handler
 
 import (
@@ -10,14 +11,20 @@ import (
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository/mocks"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
+	testutils "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreateShortenURLBatch(t *testing.T) {
+	config.Envs.BaseURL = "http://localhost:8080"
+
+	defer testutils.GenerateMockUUID()()
+
 	tests := []struct {
 		name        string
 		method      string
@@ -32,24 +39,19 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			method:      http.MethodPost,
 			contentType: "application/json",
 			body: []model.JSONBatchReq{
-				{CorrelationID: "ID1", OriginalURL: "https://google.com"},
-				{CorrelationID: "ID2", OriginalURL: "https://yandex.ru"},
+				{CorrelationID: "ID1", OriginalURL: "https://example.com/1"},
+				{CorrelationID: "ID2", OriginalURL: "https://example.com/2"},
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					Length().
-					Return(0, nil).
-					Times(1)
-
-				mock.EXPECT().
 					BatchSave(gomock.Any(), gomock.Any()).
-					Return("", "", nil).
+					Return(repository.BatchConflict{}, nil).
 					Times(1)
 			},
 			statusCode: http.StatusCreated,
 			response: []model.JSONBatchResp{
-				{ShortURL: config.Envs.BaseURL + "/" + "key_1", CorrelationID: "ID1"},
-				{ShortURL: config.Envs.BaseURL + "/" + "key_2", CorrelationID: "ID2"},
+				{ShortURL: "http://localhost:8080/key_1", CorrelationID: "ID1"},
+				{ShortURL: "http://localhost:8080/key_2", CorrelationID: "ID2"},
 			},
 		},
 		{
@@ -61,20 +63,40 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					Length().
-					Return(0, nil).
-					Times(1)
-
-				mock.EXPECT().
 					BatchSave(gomock.Any(), gomock.Any()).
-					Return("", "", errors.New("database error")).
+					Return(repository.BatchConflict{}, errors.New("database error")).
 					Times(1)
 			},
 			statusCode: http.StatusInternalServerError,
 			response:   nil,
 		},
 		{
-			name:        "Case_3 invalid HTTP method",
+			name:        "Case_3 BatchSave with conflict",
+			method:      http.MethodPost,
+			contentType: "application/json",
+			body: []model.JSONBatchReq{
+				{CorrelationID: "ID1", OriginalURL: "https://google.com"},
+				{CorrelationID: "ID2", OriginalURL: "https://google.com"},
+			},
+			setupMock: func(mock *mocks.MockRepository) {
+				mock.EXPECT().
+					BatchSave(gomock.Any(), gomock.Any()).
+					Return(repository.BatchConflict{
+						CorrelationID: "ID1",
+						Key:           "key_1",
+					}, repository.ErrConflict).
+					Times(1)
+			},
+			statusCode: http.StatusConflict,
+			response: []model.JSONBatchResp{
+				{
+					CorrelationID: "ID1",
+					ShortURL:      "http://localhost:8080/key_1",
+				},
+			},
+		},
+		{
+			name:        "Case_4 invalid HTTP method",
 			method:      http.MethodGet,
 			contentType: "application/json",
 			body:        []model.JSONBatchReq{},
@@ -83,7 +105,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			response:    nil,
 		},
 		{
-			name:        "Case_4 invalid content type",
+			name:        "Case_5 invalid content type",
 			method:      http.MethodPost,
 			contentType: "text/plain",
 			body:        []model.JSONBatchReq{},
@@ -92,31 +114,14 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			response:    nil,
 		},
 		{
-			name:        "Case_5 Data is empty",
+			name:        "Case_6 empty batch",
 			method:      http.MethodPost,
 			contentType: "application/json",
 			body:        []model.JSONBatchReq{},
-			setupMock:   func(mock *mocks.MockRepository) {},
-			statusCode:  http.StatusNoContent,
-			response:    nil,
-		},
-		{
-			name:        "Case_6 Length error",
-			method:      http.MethodPost,
-			contentType: "application/json",
-			body: []model.JSONBatchReq{
-				{CorrelationID: "ID1", OriginalURL: "https://google.com"},
-			},
 			setupMock: func(mock *mocks.MockRepository) {
-				mock.EXPECT().
-					Length().
-					Return(0, errors.New("DB error"))
-
-				mock.EXPECT().
-					BatchSave(gomock.Any(), gomock.Any()).
-					Times(0)
+				mock.EXPECT().BatchSave(gomock.Any(), gomock.Any()).Times(0)
 			},
-			statusCode: http.StatusInternalServerError,
+			statusCode: http.StatusNoContent,
 			response:   nil,
 		},
 	}
@@ -127,7 +132,9 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			defer ctrl.Finish()
 
 			mockRepo := mocks.NewMockRepository(ctrl)
-			tt.setupMock(mockRepo)
+			if tt.setupMock != nil {
+				tt.setupMock(mockRepo)
+			}
 
 			svc := service.NewService(mockRepo)
 			handler := CreateShortenURLBatch(svc)
@@ -143,15 +150,19 @@ func TestCreateShortenURLBatch(t *testing.T) {
 
 			assert.Equal(t, tt.statusCode, rr.Code)
 
-			if tt.response != nil {
+			if tt.response != nil && rr.Code == http.StatusCreated {
 				var resp []model.JSONBatchResp
 				err = json.NewDecoder(rr.Body).Decode(&resp)
 				require.NoError(t, err)
 				assert.Equal(t, tt.response, resp)
 			}
 
-			if tt.statusCode == http.StatusConflict {
-				assert.Empty(t, rr.Body.String())
+			// Для конфликта проверяем ответ
+			if tt.statusCode == http.StatusConflict && tt.response != nil {
+				var resp []model.JSONBatchResp
+				err = json.NewDecoder(rr.Body).Decode(&resp)
+				require.NoError(t, err)
+				assert.Equal(t, tt.response, resp)
 			}
 		})
 	}

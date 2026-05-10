@@ -6,9 +6,7 @@ import (
 	"time"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
-	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 var ErrConflict error = errors.New("URL is already exist")
@@ -49,88 +47,64 @@ func (pg *PostgresStorage) Get(key string) (string, error) {
 }
 
 func (pg *PostgresStorage) Save(key string, url string) (string, error) {
-	queryStr := "INSERT INTO shorten_url (key, url) VALUES ($1, $2)"
 
-	var pgErr *pgconn.PgError
-	_, err := pg.conn.Exec(pg.ctx, queryStr, key, url)
+	queryStr := `
+		INSERT INTO shorten_url (key, url)
+		VALUES ($1, $2)
+		ON CONFLICT (url)
+		DO UPDATE SET url = shorten_url.url
+		RETURNING key
+	`
+
+	var returnedKey string
+	err := pg.conn.QueryRow(pg.ctx, queryStr, key, url).Scan(&returnedKey)
+
 	if err != nil {
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == pgerrcode.UniqueViolation {
-
-				var existKey string
-
-				err := pg.conn.QueryRow(pg.ctx,
-					`SELECT key FROM shorten_url WHERE url = $1`,
-					url,
-				).Scan(&existKey)
-
-				if err != nil {
-					return "", err
-				}
-				return existKey, ErrConflict
-			}
-		}
 		return "", err
 	}
+
+	if returnedKey != key {
+		return returnedKey, ErrConflict
+	}
+
 	return key, nil
 }
 
-func (pg *PostgresStorage) BatchSave(keys []string, batch []model.JSONBatchReq) (string, string, error) {
+func (pg *PostgresStorage) BatchSave(keys []string, batch []model.JSONBatchReq) (BatchConflict, error) {
 	tx, err := pg.conn.BeginTx(pg.ctx, pgx.TxOptions{})
 	if err != nil {
-		return "", "", err
+		return BatchConflict{}, err
 	}
 	defer tx.Rollback(pg.ctx)
 
-	var pgErr *pgconn.PgError
+	queryStr := `
+		INSERT INTO shorten_url (key, url)
+		VALUES ($1, $2)
+		ON CONFLICT (url)
+		DO UPDATE SET url = shorten_url.url
+		RETURNING key
+	`
 
 	for i, v := range batch {
-		queryStr := "INSERT INTO shorten_url (key, url, correlation_id) VALUES ($1, $2, $3)"
-		_, err = tx.Exec(pg.ctx, queryStr, keys[i], v.OriginalURL, v.CorrelationID)
-		if errors.As(err, &pgErr) {
-			if pgErr.Code == pgerrcode.UniqueViolation {
-
-				tx.Rollback(pg.ctx)
-
-				var existKey string
-				var existID *string
-				err := pg.conn.QueryRow(pg.ctx,
-					`SELECT key, correlation_id FROM shorten_url WHERE url = $1`,
-					v.OriginalURL,
-				).Scan(&existKey, &existID)
-
-				if err != nil {
-					return "", "", err
-				}
-
-				if existID != nil {
-					return existKey, *existID, ErrConflict
-				}
-				return existKey, "", ErrConflict
-			}
+		var returnedKey string
+		err = tx.QueryRow(pg.ctx, queryStr, keys[i], v.OriginalURL).Scan(&returnedKey)
+		if err != nil {
+			return BatchConflict{}, err
 		}
 
+		if returnedKey != keys[i] {
+			return BatchConflict{
+				CorrelationID: v.CorrelationID,
+				Key:           returnedKey,
+			}, ErrConflict
+		}
 	}
 
 	err = tx.Commit(pg.ctx)
 	if err != nil {
-		return "", "", err
+		return BatchConflict{}, err
 	}
-
-	return "", "", nil
-}
-
-func (pg *PostgresStorage) Length() (int, error) {
-	var length int
-	queryStr := "SELECT COUNT(*) FROM shorten_url"
-
-	err := pg.conn.QueryRow(pg.ctx, queryStr).Scan(&length)
-
-	if err != nil {
-		return 0, err
-	}
-
-	return length, nil
+	return BatchConflict{}, nil
 }
 
 func (pg *PostgresStorage) Ping() error {

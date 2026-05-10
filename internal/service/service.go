@@ -1,11 +1,10 @@
 package service
 
 import (
-	"strconv"
-
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
+	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -23,44 +22,31 @@ func (u *Service) Get(key string) (string, error) {
 }
 
 func (u *Service) Save(url string) (string, error) {
-	len, err := u.repository.Length()
-	if err != nil {
-		return "", err
-	}
-	key := "key_" + strconv.Itoa(len+1)
+	key := GenerateUUID()
 	return u.repository.Save(key, url)
 }
 
 func (u *Service) BatchSave(batch []model.JSONBatchReq) ([]model.JSONBatchResp, error) {
-	if len(batch) == 0 {
-		return nil, nil
-	}
-
-	length, err := u.repository.Length()
-	if err != nil {
-		return nil, err
-	}
 
 	result := make([]model.JSONBatchResp, len(batch))
 	keys := make([]string, len(batch))
 
 	for i, v := range batch {
-		key := "key_" + strconv.Itoa(length+1)
+		key := GenerateUUID()
 		keys[i] = key
+
 		result[i] = model.JSONBatchResp{
 			ShortURL:      config.Envs.BaseURL + "/" + key,
 			CorrelationID: v.CorrelationID,
 		}
-
-		length++
 	}
 
-	existKey, existID, err := u.repository.BatchSave(keys, batch)
+	existRow, err := u.repository.BatchSave(keys, batch)
 
-	if existKey != "" {
+	if existRow.Key != "" {
 		return []model.JSONBatchResp{{
-			CorrelationID: existID,
-			ShortURL:      config.Envs.BaseURL + "/" + existKey,
+			CorrelationID: existRow.CorrelationID,
+			ShortURL:      config.Envs.BaseURL + "/" + existRow.Key,
 		},
 		}, err
 	} else if err != nil {
@@ -72,4 +58,8 @@ func (u *Service) BatchSave(batch []model.JSONBatchReq) ([]model.JSONBatchResp, 
 
 func (u *Service) Ping() error {
 	return u.repository.Ping()
+}
+
+var GenerateUUID = func() string {
+	return uuid.NewString()[:5]
 }

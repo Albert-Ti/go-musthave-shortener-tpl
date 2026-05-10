@@ -53,10 +53,9 @@ func (u *FileStorage) Get(key string) (string, error) {
 }
 
 func (u *FileStorage) Save(key string, url string) (string, error) {
-	len, _ := u.Length()
 
 	record := &filRecord{
-		Uuid:        len + 1,
+		Uuid:        len(u.urls) + 1,
 		ShortURL:    key,
 		OriginalURL: url,
 	}
@@ -70,30 +69,22 @@ func (u *FileStorage) Save(key string, url string) (string, error) {
 	return key, nil
 }
 
-func (u *FileStorage) BatchSave(keys []string, batch []model.JSONBatchReq) (string, string, error) {
-	len, _ := u.Length()
-
+func (u *FileStorage) BatchSave(keys []string, batch []model.JSONBatchReq) (BatchConflict, error) {
 	for i, v := range batch {
 
 		record := &filRecord{
-			Uuid:        len + 1,
+			Uuid:        len(u.urls) + 1,
 			ShortURL:    keys[i],
 			OriginalURL: v.OriginalURL,
 		}
-		len++
-
 		u.urls[keys[i]] = v.OriginalURL
 
 		if err := u.encoder.Encode(&record); err != nil {
-			return "", "", err
+			return BatchConflict{}, err
 		}
 	}
 
-	return "", "", nil
-}
-
-func (u *FileStorage) Length() (int, error) {
-	return len(u.urls), nil
+	return BatchConflict{}, nil
 }
 
 func (u *FileStorage) Close() error {

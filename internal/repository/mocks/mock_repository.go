@@ -8,6 +8,7 @@ import (
 	reflect "reflect"
 
 	model "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	repository "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -35,13 +36,12 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 }
 
 // BatchSave mocks base method.
-func (m *MockRepository) BatchSave(keys []string, batch []model.JSONBatchReq) (string, string, error) {
+func (m *MockRepository) BatchSave(keys []string, batch []model.JSONBatchReq) (repository.BatchConflict, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "BatchSave", keys, batch)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(string)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret0, _ := ret[0].(repository.BatchConflict)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // BatchSave indicates an expected call of BatchSave.
@@ -77,21 +77,6 @@ func (m *MockRepository) Get(key string) (string, error) {
 func (mr *MockRepositoryMockRecorder) Get(key interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), key)
-}
-
-// Length mocks base method.
-func (m *MockRepository) Length() (int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Length")
-	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Length indicates an expected call of Length.
-func (mr *MockRepositoryMockRecorder) Length() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Length", reflect.TypeOf((*MockRepository)(nil).Length))
 }
 
 // Ping mocks base method.

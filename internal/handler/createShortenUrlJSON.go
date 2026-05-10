@@ -39,19 +39,19 @@ func CreateShortenURLJSON(svc *service.Service) http.HandlerFunc {
 		keyURL, err := svc.Save(dec.URL)
 		fullURL := config.Envs.BaseURL + "/" + keyURL
 
-		if errors.Is(err, repository.ErrConflict) {
-			w.WriteHeader(http.StatusConflict)
+		statusCode := http.StatusCreated
+
+		if err != nil && errors.Is(err, repository.ErrConflict) {
+			statusCode = http.StatusConflict
 		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		resp := model.JSONResp{Result: fullURL}
-
 		w.Header().Set("Content-type", "application/json")
-		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(statusCode)
 
-		if err := json.NewEncoder(w).Encode(&resp); err != nil {
+		if err := json.NewEncoder(w).Encode(&model.JSONResp{Result: fullURL}); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

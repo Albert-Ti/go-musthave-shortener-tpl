@@ -13,6 +13,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
+	testutils "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,6 +36,8 @@ func TestCreateShortURL(t *testing.T) {
 	defer srv.Close()
 
 	config.Envs.BaseURL = srv.URL
+
+	defer testutils.GenerateMockUUID()()
 
 	type want struct {
 		method   string

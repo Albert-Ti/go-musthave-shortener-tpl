@@ -13,6 +13,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
+	testutils "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,6 +26,8 @@ func TestRedirectByKeyURL(t *testing.T) {
 		panic(e)
 	}
 	defer repo.Close()
+
+	defer testutils.GenerateMockUUID()()
 
 	svc := service.NewService(repo)
 	svc.Save("http://yandex.ru")
