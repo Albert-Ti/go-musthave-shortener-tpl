@@ -2,8 +2,6 @@ package repository
 
 import (
 	"context"
-
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 )
 
 type MemoryStorage struct {
@@ -22,14 +20,6 @@ func (u *MemoryStorage) Save(ctx context.Context, key string, url string) (strin
 	u.urls[key] = url
 
 	return key, nil
-}
-
-func (u *MemoryStorage) BatchSave(ctx context.Context, keys []string, batch []model.JSONBatchReq) (BatchConflict, error) {
-	for i, v := range batch {
-		u.urls[keys[i]] = v.OriginalURL
-	}
-
-	return BatchConflict{}, nil
 }
 
 func (u *MemoryStorage) Close() error {

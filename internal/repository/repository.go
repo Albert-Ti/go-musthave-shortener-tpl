@@ -5,21 +5,14 @@ import (
 	"log/slog"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres" // ← для работы с PostgreSQL
 	_ "github.com/golang-migrate/migrate/v4/source/file"       // ← для чтения файлов
 )
 
-type BatchConflict struct {
-	Key           string
-	CorrelationID string
-}
-
 type Repository interface {
 	Get(ctx context.Context, key string) (string, error)
 	Save(ctx context.Context, key string, value string) (string, error)
-	BatchSave(ctx context.Context, keys []string, batch []model.JSONBatchReq) (BatchConflict, error)
 	Ping(ctx context.Context) error
 	Close() error
 }

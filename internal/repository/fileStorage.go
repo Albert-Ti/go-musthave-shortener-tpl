@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 )
 
 type FileStorage struct {
@@ -68,24 +66,6 @@ func (u *FileStorage) Save(ctx context.Context, key string, url string) (string,
 	}
 
 	return key, nil
-}
-
-func (u *FileStorage) BatchSave(ctx context.Context, keys []string, batch []model.JSONBatchReq) (BatchConflict, error) {
-	for i, v := range batch {
-
-		record := &filRecord{
-			Uuid:        len(u.urls) + 1,
-			ShortURL:    keys[i],
-			OriginalURL: v.OriginalURL,
-		}
-		u.urls[keys[i]] = v.OriginalURL
-
-		if err := u.encoder.Encode(&record); err != nil {
-			return BatchConflict{}, err
-		}
-	}
-
-	return BatchConflict{}, nil
 }
 
 func (u *FileStorage) Close() error {

@@ -20,8 +20,8 @@ func NewService(r repository.Repository) *Service {
 	}
 }
 
-func (u *Service) Get(ctx context.Context, key string) (string, error) {
-	return u.repository.Get(ctx, key)
+func (s *Service) Get(ctx context.Context, key string) (string, error) {
+	return s.repository.Get(ctx, key)
 }
 
 func (s *Service) Save(ctx context.Context, url string) (string, bool, error) {
@@ -38,36 +38,32 @@ func (s *Service) Save(ctx context.Context, url string) (string, bool, error) {
 	return savedKey, true, nil
 }
 
-func (u *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq) ([]model.JSONBatchResp, error) {
+func (s *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq) ([]model.JSONBatchResp, error) {
+	results := make([]model.JSONBatchResp, 0)
+	hasConflict := false
 
-	result := make([]model.JSONBatchResp, len(batch))
-	keys := make([]string, len(batch))
-
-	for i, v := range batch {
+	for _, v := range batch {
 		key := utils.GenerateUUID()
-		keys[i] = key
 
-		result[i] = model.JSONBatchResp{
-			ShortURL:      config.Envs.BaseURL + "/" + key,
-			CorrelationID: v.CorrelationID,
+		savedKey, err := s.repository.Save(ctx, key, v.OriginalURL)
+		if errors.Is(err, repository.ErrConflict) {
+			hasConflict = true
 		}
+		if err != nil && !errors.Is(err, repository.ErrConflict) {
+			return nil, err
+		}
+
+		results = append(results, model.JSONBatchResp{
+			CorrelationID: v.CorrelationID,
+			ShortURL:      config.Envs.BaseURL + "/" + savedKey,
+		})
 	}
-
-	existRow, err := u.repository.BatchSave(ctx, keys, batch)
-
-	if existRow.Key != "" {
-		return []model.JSONBatchResp{{
-			CorrelationID: existRow.CorrelationID,
-			ShortURL:      config.Envs.BaseURL + "/" + existRow.Key,
-		},
-		}, err
-	} else if err != nil {
-		return nil, err
+	if hasConflict {
+		return results, repository.ErrConflict
 	}
-
-	return result, nil
+	return results, nil
 }
 
-func (u *Service) Ping(ctx context.Context) error {
-	return u.repository.Ping(ctx)
+func (s *Service) Ping(ctx context.Context) error {
+	return s.repository.Ping(ctx)
 }

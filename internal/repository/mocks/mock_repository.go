@@ -8,8 +8,6 @@ import (
 	context "context"
 	reflect "reflect"
 
-	model "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
-	repository "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -34,21 +32,6 @@ func NewMockRepository(ctrl *gomock.Controller) *MockRepository {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
-}
-
-// BatchSave mocks base method.
-func (m *MockRepository) BatchSave(ctx context.Context, keys []string, batch []model.JSONBatchReq) (repository.BatchConflict, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BatchSave", ctx, keys, batch)
-	ret0, _ := ret[0].(repository.BatchConflict)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// BatchSave indicates an expected call of BatchSave.
-func (mr *MockRepositoryMockRecorder) BatchSave(ctx, keys, batch interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchSave", reflect.TypeOf((*MockRepository)(nil).BatchSave), ctx, keys, batch)
 }
 
 // Close mocks base method.

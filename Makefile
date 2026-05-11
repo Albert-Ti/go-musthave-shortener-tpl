@@ -39,6 +39,9 @@ migrate-drop:
 	@echo "This will DROP EVERYTHING! Continue? [y/N]" && read ans && [ $${ans:-N} = y ]
 	migrate -database "$(DB_URL)" -path $(MIGRATIONS_PATH) drop -f
 
+migrate-reset: migrate-drop migrate-up
+	@echo "Database reset and migrations reapplied"
+
 docker-up:
 	docker compose up -d --force-recreate
 
