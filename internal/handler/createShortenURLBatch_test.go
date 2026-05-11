@@ -3,6 +3,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -44,7 +45,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					BatchSave(gomock.Any(), gomock.Any()).
+					BatchSave(context.Background(), gomock.Any(), gomock.Any()).
 					Return(repository.BatchConflict{}, nil).
 					Times(1)
 			},
@@ -63,7 +64,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					BatchSave(gomock.Any(), gomock.Any()).
+					BatchSave(context.Background(), gomock.Any(), gomock.Any()).
 					Return(repository.BatchConflict{}, errors.New("database error")).
 					Times(1)
 			},
@@ -80,7 +81,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					BatchSave(gomock.Any(), gomock.Any()).
+					BatchSave(context.Background(), gomock.Any(), gomock.Any()).
 					Return(repository.BatchConflict{
 						CorrelationID: "ID1",
 						Key:           "key_1",
@@ -119,7 +120,9 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			contentType: "application/json",
 			body:        []model.JSONBatchReq{},
 			setupMock: func(mock *mocks.MockRepository) {
-				mock.EXPECT().BatchSave(gomock.Any(), gomock.Any()).Times(0)
+				mock.EXPECT().
+					BatchSave(context.Background(), gomock.Any(), gomock.Any()).
+					Times(0)
 			},
 			statusCode: http.StatusNoContent,
 			response:   nil,

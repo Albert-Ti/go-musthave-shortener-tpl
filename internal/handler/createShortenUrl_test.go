@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -22,7 +21,7 @@ func TestCreateShortURL(t *testing.T) {
 	tmpDir := t.TempDir()
 	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
 
-	repo, e := repository.NewRepository(context.Background())
+	repo, e := repository.NewRepository()
 	if e != nil {
 		panic(e)
 	}

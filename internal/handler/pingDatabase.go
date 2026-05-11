@@ -9,7 +9,9 @@ import (
 func PingDatabase(svc *service.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		if err := svc.Ping(); err != nil {
+		ctx := r.Context()
+
+		if err := svc.Ping(ctx); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	model "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
@@ -36,18 +37,18 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 }
 
 // BatchSave mocks base method.
-func (m *MockRepository) BatchSave(keys []string, batch []model.JSONBatchReq) (repository.BatchConflict, error) {
+func (m *MockRepository) BatchSave(ctx context.Context, keys []string, batch []model.JSONBatchReq) (repository.BatchConflict, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BatchSave", keys, batch)
+	ret := m.ctrl.Call(m, "BatchSave", ctx, keys, batch)
 	ret0, _ := ret[0].(repository.BatchConflict)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // BatchSave indicates an expected call of BatchSave.
-func (mr *MockRepositoryMockRecorder) BatchSave(keys, batch interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) BatchSave(ctx, keys, batch interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchSave", reflect.TypeOf((*MockRepository)(nil).BatchSave), keys, batch)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchSave", reflect.TypeOf((*MockRepository)(nil).BatchSave), ctx, keys, batch)
 }
 
 // Close mocks base method.
@@ -65,45 +66,45 @@ func (mr *MockRepositoryMockRecorder) Close() *gomock.Call {
 }
 
 // Get mocks base method.
-func (m *MockRepository) Get(key string) (string, error) {
+func (m *MockRepository) Get(ctx context.Context, key string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", key)
+	ret := m.ctrl.Call(m, "Get", ctx, key)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockRepositoryMockRecorder) Get(key interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) Get(ctx, key interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), key)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), ctx, key)
 }
 
 // Ping mocks base method.
-func (m *MockRepository) Ping() error {
+func (m *MockRepository) Ping(ctx context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Ping")
+	ret := m.ctrl.Call(m, "Ping", ctx)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Ping indicates an expected call of Ping.
-func (mr *MockRepositoryMockRecorder) Ping() *gomock.Call {
+func (mr *MockRepositoryMockRecorder) Ping(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockRepository)(nil).Ping))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockRepository)(nil).Ping), ctx)
 }
 
 // Save mocks base method.
-func (m *MockRepository) Save(key, value string) (string, error) {
+func (m *MockRepository) Save(ctx context.Context, key, value string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", key, value)
+	ret := m.ctrl.Call(m, "Save", ctx, key, value)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Save indicates an expected call of Save.
-func (mr *MockRepositoryMockRecorder) Save(key, value interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) Save(ctx, key, value interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockRepository)(nil).Save), key, value)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockRepository)(nil).Save), ctx, key, value)
 }

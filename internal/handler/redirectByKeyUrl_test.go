@@ -21,7 +21,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 	tmpDir := t.TempDir()
 	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
 
-	repo, e := repository.NewRepository(context.Background())
+	repo, e := repository.NewRepository()
 	if e != nil {
 		panic(e)
 	}
@@ -30,8 +30,10 @@ func TestRedirectByKeyURL(t *testing.T) {
 	defer utils.GenerateMockUUID()()
 
 	svc := service.NewService(repo)
-	svc.Save("http://yandex.ru")
-	getURL, _ := svc.Get("key_1")
+
+	ctx := context.Background()
+	svc.Save(ctx, "http://yandex.ru")
+	getURL, _ := svc.Get(ctx, "key_1")
 
 	type want struct {
 		method   string

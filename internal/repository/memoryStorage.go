@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 )
 
@@ -12,17 +14,17 @@ func NewMemoryStorage() (*MemoryStorage, error) {
 	return &MemoryStorage{urls: map[string]string{}}, nil
 }
 
-func (u *MemoryStorage) Get(key string) (string, error) {
+func (u *MemoryStorage) Get(ctx context.Context, key string) (string, error) {
 	return u.urls[key], nil
 }
 
-func (u *MemoryStorage) Save(key string, url string) (string, error) {
+func (u *MemoryStorage) Save(ctx context.Context, key string, url string) (string, error) {
 	u.urls[key] = url
 
 	return key, nil
 }
 
-func (u *MemoryStorage) BatchSave(keys []string, batch []model.JSONBatchReq) (BatchConflict, error) {
+func (u *MemoryStorage) BatchSave(ctx context.Context, keys []string, batch []model.JSONBatchReq) (BatchConflict, error) {
 	for i, v := range batch {
 		u.urls[keys[i]] = v.OriginalURL
 	}
@@ -34,6 +36,6 @@ func (u *MemoryStorage) Close() error {
 	return nil
 }
 
-func (u *MemoryStorage) Ping() error {
+func (u *MemoryStorage) Ping(ctx context.Context) error {
 	return nil
 }

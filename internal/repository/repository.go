@@ -17,14 +17,14 @@ type BatchConflict struct {
 }
 
 type Repository interface {
-	Get(key string) (string, error)
-	Save(key string, value string) (string, error)
-	BatchSave(keys []string, batch []model.JSONBatchReq) (BatchConflict, error)
+	Get(ctx context.Context, key string) (string, error)
+	Save(ctx context.Context, key string, value string) (string, error)
+	BatchSave(ctx context.Context, keys []string, batch []model.JSONBatchReq) (BatchConflict, error)
+	Ping(ctx context.Context) error
 	Close() error
-	Ping() error
 }
 
-func NewRepository(ctx context.Context) (Repository, error) {
+func NewRepository() (Repository, error) {
 	if config.Envs.DatabaseDSN != "" {
 		slog.Debug("Using database storage")
 
@@ -45,7 +45,7 @@ func NewRepository(ctx context.Context) (Repository, error) {
 			return nil, err
 		}
 
-		return NewPostgresStorage(config.Envs.DatabaseDSN, ctx)
+		return NewPostgresStorage(config.Envs.DatabaseDSN)
 	}
 
 	if config.Envs.FileStoragePath != "" {

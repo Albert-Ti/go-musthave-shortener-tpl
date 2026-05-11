@@ -34,7 +34,8 @@ func CreateShortenURLBatch(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
-		resp, err := svc.BatchSave(dec)
+		ctx := r.Context()
+		resp, err := svc.BatchSave(ctx, dec)
 
 		statusCode := http.StatusCreated
 

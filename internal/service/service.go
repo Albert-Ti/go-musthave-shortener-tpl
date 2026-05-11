@@ -1,12 +1,13 @@
 package service
 
 import (
+	"context"
 	"errors"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
-	"github.com/google/uuid"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 )
 
 type Service struct {
@@ -19,14 +20,14 @@ func NewService(r repository.Repository) *Service {
 	}
 }
 
-func (u *Service) Get(key string) (string, error) {
-	return u.repository.Get(key)
+func (u *Service) Get(ctx context.Context, key string) (string, error) {
+	return u.repository.Get(ctx, key)
 }
 
-func (s *Service) Save(url string) (string, bool, error) {
-	key := GenerateUUID()
+func (s *Service) Save(ctx context.Context, url string) (string, bool, error) {
+	key := utils.GenerateUUID()
 
-	savedKey, err := s.repository.Save(key, url)
+	savedKey, err := s.repository.Save(ctx, key, url)
 	if err != nil {
 		if errors.Is(err, repository.ErrConflict) {
 			return savedKey, false, nil
@@ -37,13 +38,13 @@ func (s *Service) Save(url string) (string, bool, error) {
 	return savedKey, true, nil
 }
 
-func (u *Service) BatchSave(batch []model.JSONBatchReq) ([]model.JSONBatchResp, error) {
+func (u *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq) ([]model.JSONBatchResp, error) {
 
 	result := make([]model.JSONBatchResp, len(batch))
 	keys := make([]string, len(batch))
 
 	for i, v := range batch {
-		key := GenerateUUID()
+		key := utils.GenerateUUID()
 		keys[i] = key
 
 		result[i] = model.JSONBatchResp{
@@ -52,7 +53,7 @@ func (u *Service) BatchSave(batch []model.JSONBatchReq) ([]model.JSONBatchResp, 
 		}
 	}
 
-	existRow, err := u.repository.BatchSave(keys, batch)
+	existRow, err := u.repository.BatchSave(ctx, keys, batch)
 
 	if existRow.Key != "" {
 		return []model.JSONBatchResp{{
@@ -67,10 +68,6 @@ func (u *Service) BatchSave(batch []model.JSONBatchReq) ([]model.JSONBatchResp, 
 	return result, nil
 }
 
-func (u *Service) Ping() error {
-	return u.repository.Ping()
-}
-
-var GenerateUUID = func() string {
-	return uuid.NewString()[:5]
+func (u *Service) Ping(ctx context.Context) error {
+	return u.repository.Ping(ctx)
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 
@@ -17,8 +16,7 @@ import (
 func main() {
 	config.ParseFlag()
 
-	ctx := context.Background()
-	repo, e := repository.NewRepository(ctx)
+	repo, e := repository.NewRepository()
 
 	if e != nil {
 		panic(e)

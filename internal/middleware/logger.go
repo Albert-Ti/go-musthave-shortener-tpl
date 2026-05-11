@@ -47,13 +47,32 @@ func WithLogging(h http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
-		slog.Info("",
-			slog.String("method", r.Method),
-			slog.String("uri", r.RequestURI),
-			slog.Duration("duration", duration),
-			slog.Int("status", responseData.status),
-			slog.Int("size", responseData.size),
-		)
+		switch {
+		case responseData.status >= 500:
+			slog.Error("",
+				slog.String("method", r.Method),
+				slog.String("uri", r.RequestURI),
+				slog.Duration("duration", duration),
+				slog.Int("status", responseData.status),
+				slog.Int("size", responseData.size),
+			)
+		case responseData.status >= 400:
+			slog.Warn("",
+				slog.String("method", r.Method),
+				slog.String("uri", r.RequestURI),
+				slog.Duration("duration", duration),
+				slog.Int("status", responseData.status),
+				slog.Int("size", responseData.size),
+			)
+		default:
+			slog.Info("",
+				slog.String("method", r.Method),
+				slog.String("uri", r.RequestURI),
+				slog.Duration("duration", duration),
+				slog.Int("status", responseData.status),
+				slog.Int("size", responseData.size),
+			)
+		}
 
 	}
 	return http.HandlerFunc(logFn)

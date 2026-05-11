@@ -35,7 +35,9 @@ func CreateShortenURL(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
-		keyURL, isNew, err := svc.Save(string(body))
+		ctx := r.Context()
+		keyURL, isNew, err := svc.Save(ctx, string(body))
+
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

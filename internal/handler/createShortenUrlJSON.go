@@ -34,7 +34,8 @@ func CreateShortenURLJSON(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
-		keyURL, isNew, err := svc.Save(req.URL)
+		ctx := r.Context()
+		keyURL, isNew, err := svc.Save(ctx, req.URL)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

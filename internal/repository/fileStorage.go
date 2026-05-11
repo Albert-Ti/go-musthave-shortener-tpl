@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -48,11 +49,11 @@ func NewFileStorage(path string) (*FileStorage, error) {
 	}, nil
 }
 
-func (u *FileStorage) Get(key string) (string, error) {
+func (u *FileStorage) Get(ctx context.Context, key string) (string, error) {
 	return u.urls[key], nil
 }
 
-func (u *FileStorage) Save(key string, url string) (string, error) {
+func (u *FileStorage) Save(ctx context.Context, key string, url string) (string, error) {
 
 	record := &filRecord{
 		Uuid:        len(u.urls) + 1,
@@ -69,7 +70,7 @@ func (u *FileStorage) Save(key string, url string) (string, error) {
 	return key, nil
 }
 
-func (u *FileStorage) BatchSave(keys []string, batch []model.JSONBatchReq) (BatchConflict, error) {
+func (u *FileStorage) BatchSave(ctx context.Context, keys []string, batch []model.JSONBatchReq) (BatchConflict, error) {
 	for i, v := range batch {
 
 		record := &filRecord{
@@ -91,6 +92,6 @@ func (u *FileStorage) Close() error {
 	return u.element.Close()
 }
 
-func (u *FileStorage) Ping() error {
+func (u *FileStorage) Ping(ctx context.Context) error {
 	return nil
 }

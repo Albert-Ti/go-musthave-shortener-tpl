@@ -16,7 +16,8 @@ func RedirectByKeyURL(svc *service.Service) http.HandlerFunc {
 
 		param := strings.TrimPrefix(r.URL.Path, "/")
 
-		url, err := svc.Get(param)
+		ctx := r.Context()
+		url, err := svc.Get(ctx, param)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
