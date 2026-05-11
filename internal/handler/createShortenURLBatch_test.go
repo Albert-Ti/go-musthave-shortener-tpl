@@ -3,7 +3,6 @@ package handler
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -45,8 +44,12 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					BatchSave(context.Background(), gomock.Any(), gomock.Any()).
-					Return(repository.BatchConflict{}, nil).
+					Save(gomock.Any(), gomock.Any(), "https://example.com/1").
+					Return("key_1", nil).
+					Times(1)
+				mock.EXPECT().
+					Save(gomock.Any(), gomock.Any(), "https://example.com/2").
+					Return("key_2", nil).
 					Times(1)
 			},
 			statusCode: http.StatusCreated,
@@ -56,7 +59,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 		},
 		{
-			name:        "Case_2 BatchSave error",
+			name:        "Case_2 BatchSave error (database error)",
 			method:      http.MethodPost,
 			contentType: "application/json",
 			body: []model.JSONBatchReq{
@@ -64,15 +67,15 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					BatchSave(context.Background(), gomock.Any(), gomock.Any()).
-					Return(repository.BatchConflict{}, errors.New("database error")).
+					Save(gomock.Any(), gomock.Any(), "https://google.com").
+					Return("", errors.New("database error")).
 					Times(1)
 			},
 			statusCode: http.StatusInternalServerError,
 			response:   nil,
 		},
 		{
-			name:        "Case_3 BatchSave with conflict",
+			name:        "Case_3 BatchSave with conflict (duplicate URL)",
 			method:      http.MethodPost,
 			contentType: "application/json",
 			body: []model.JSONBatchReq{
@@ -81,19 +84,19 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					BatchSave(context.Background(), gomock.Any(), gomock.Any()).
-					Return(repository.BatchConflict{
-						CorrelationID: "ID1",
-						Key:           "key_1",
-					}, repository.ErrConflict).
+					Save(gomock.Any(), gomock.Any(), "https://google.com").
+					Return("key_1", nil).
+					Times(1)
+
+				mock.EXPECT().
+					Save(gomock.Any(), gomock.Any(), "https://google.com").
+					Return("key_1", repository.ErrConflict).
 					Times(1)
 			},
 			statusCode: http.StatusConflict,
 			response: []model.JSONBatchResp{
-				{
-					CorrelationID: "ID1",
-					ShortURL:      "http://localhost:8080/key_1",
-				},
+				{ShortURL: "http://localhost:8080/key_1", CorrelationID: "ID1"},
+				{ShortURL: "http://localhost:8080/key_1", CorrelationID: "ID2"},
 			},
 		},
 		{
@@ -120,12 +123,35 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			contentType: "application/json",
 			body:        []model.JSONBatchReq{},
 			setupMock: func(mock *mocks.MockRepository) {
-				mock.EXPECT().
-					BatchSave(context.Background(), gomock.Any(), gomock.Any()).
-					Times(0)
+				// Никаких вызовов не должно быть
+				mock.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			},
 			statusCode: http.StatusNoContent,
 			response:   nil,
+		},
+		{
+			name:        "Case_7 partial conflict (first success, second conflict)",
+			method:      http.MethodPost,
+			contentType: "application/json",
+			body: []model.JSONBatchReq{
+				{CorrelationID: "ID1", OriginalURL: "https://new.com"},
+				{CorrelationID: "ID2", OriginalURL: "https://existing.com"},
+			},
+			setupMock: func(mock *mocks.MockRepository) {
+				mock.EXPECT().
+					Save(gomock.Any(), gomock.Any(), "https://new.com").
+					Return("key_1", nil).
+					Times(1)
+				mock.EXPECT().
+					Save(gomock.Any(), gomock.Any(), "https://existing.com").
+					Return("key_existing", repository.ErrConflict).
+					Times(1)
+			},
+			statusCode: http.StatusConflict,
+			response: []model.JSONBatchResp{
+				{ShortURL: "http://localhost:8080/key_1", CorrelationID: "ID1"},
+				{ShortURL: "http://localhost:8080/key_existing", CorrelationID: "ID2"},
+			},
 		},
 	}
 
@@ -160,7 +186,6 @@ func TestCreateShortenURLBatch(t *testing.T) {
 				assert.Equal(t, tt.response, resp)
 			}
 
-			// Для конфликта проверяем ответ
 			if tt.statusCode == http.StatusConflict && tt.response != nil {
 				var resp []model.JSONBatchResp
 				err = json.NewDecoder(rr.Body).Decode(&resp)
