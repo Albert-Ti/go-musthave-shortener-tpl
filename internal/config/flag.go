@@ -9,12 +9,14 @@ var Envs struct {
 	RunAddr         string
 	BaseURL         string
 	FileStoragePath string
+	DatabaseDSN     string
 }
 
 func ParseFlag() {
 	flag.StringVar(&Envs.RunAddr, "a", "localhost:8080", "address and port to run server")
 	flag.StringVar(&Envs.BaseURL, "b", "http://localhost:8080", "Base URL")
-	flag.StringVar(&Envs.FileStoragePath, "f", "shortenUrlList.json", "Base URL")
+	flag.StringVar(&Envs.FileStoragePath, "f", "", "file storage")
+	flag.StringVar(&Envs.DatabaseDSN, "d", "", "connection string to DB")
 
 	flag.Parse()
 
@@ -26,5 +28,8 @@ func ParseFlag() {
 	}
 	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
 		Envs.FileStoragePath = envFileStoragePath
+	}
+	if envDatabaseDSN := os.Getenv("DATABASE_DSN"); envDatabaseDSN != "" {
+		Envs.DatabaseDSN = envDatabaseDSN
 	}
 }

@@ -16,13 +16,14 @@ import (
 func main() {
 	config.ParseFlag()
 
-	shortenURLStorage, e := repository.NewShortenURLStorage()
+	repo, e := repository.NewRepository()
+
 	if e != nil {
 		panic(e)
 	}
-	defer shortenURLStorage.Close()
+	defer repo.Close()
 
-	shortenUrlService := service.NewShortenURLService(shortenURLStorage)
+	svc := service.NewService(repo)
 
 	r := chi.NewRouter()
 
@@ -31,9 +32,11 @@ func main() {
 	r.Use(myMiddleware.WithLogging)
 	r.Use(myMiddleware.GzipCompress)
 
-	r.Post("/", handler.CreateShortenURL(shortenUrlService))
-	r.Get("/{id}", handler.RedirectByKeyURL(shortenUrlService))
-	r.Post("/api/shorten", handler.CreateShortenURLJSON(shortenUrlService))
+	r.Post("/", handler.CreateShortenURL(svc))
+	r.Get("/{id}", handler.RedirectByKeyURL(svc))
+	r.Get("/ping", handler.PingDatabase(svc))
+	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc))
+	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(svc))
 
 	slog.Info("Running server", "host", config.Envs.RunAddr)
 

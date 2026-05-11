@@ -2,16 +2,16 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/validator"
 )
 
-func CreateShortenURLJSON(svc *service.Service) http.HandlerFunc {
+func CreateShortenURLBatch(svc *service.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -23,35 +23,35 @@ func CreateShortenURLJSON(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
-		var req model.JSONReq
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		var dec []model.JSONBatchReq
+		if err := json.NewDecoder(r.Body).Decode(&dec); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		if !validator.ValidateURL(req.URL) {
-			http.Error(w, "Invalid URL", http.StatusBadRequest)
+		if len(dec) == 0 {
+			http.Error(w, "Data is empty", http.StatusNoContent)
 			return
 		}
 
 		ctx := r.Context()
-		keyURL, isNew, err := svc.Save(ctx, req.URL)
-		if err != nil {
+		resp, err := svc.BatchSave(ctx, dec)
+
+		statusCode := http.StatusCreated
+
+		if err != nil && errors.Is(err, repository.ErrConflict) {
+			statusCode = http.StatusConflict
+		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		fullURL := config.Envs.BaseURL + "/" + keyURL
-		resp := model.JSONResp{Result: fullURL}
-
 		w.Header().Set("Content-type", "application/json")
+		w.WriteHeader(statusCode)
 
-		if !isNew {
-			w.WriteHeader(http.StatusConflict)
-		} else {
-			w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-
-		json.NewEncoder(w).Encode(resp)
 	}
 }

@@ -1,31 +1,39 @@
 package handler
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRedirectByKeyURL(t *testing.T) {
-	config.Envs.FileStoragePath = "test.json"
-	shortenURLStorage, e := repository.NewShortenURLStorage()
+	tmpDir := t.TempDir()
+	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
+
+	repo, e := repository.NewRepository()
 	if e != nil {
 		panic(e)
 	}
-	defer func() {
-		shortenURLStorage.Close()
-		shortenURLStorage.Remove()
-	}()
-	shortenUrlService := service.NewShortenURLService(shortenURLStorage)
-	shortenUrlService.Set("http://yandex.ru")
+	defer repo.Close()
+
+	defer utils.GenerateMockUUID()()
+
+	svc := service.NewService(repo)
+
+	ctx := context.Background()
+	svc.Save(ctx, "http://yandex.ru")
+	getURL, _ := svc.Get(ctx, "key_1")
 
 	type want struct {
 		method   string
@@ -43,7 +51,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 			endpoint: "/key_1",
 			want: want{
 				method:   http.MethodGet,
-				location: shortenUrlService.Get("key_1"),
+				location: getURL,
 				code:     http.StatusTemporaryRedirect,
 			},
 		},
@@ -73,7 +81,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 			r := httptest.NewRequest(tt.want.method, tt.endpoint, nil)
 			w := httptest.NewRecorder()
 
-			redirectHandler := RedirectByKeyURL(shortenUrlService)
+			redirectHandler := RedirectByKeyURL(svc)
 			redirectHandler(w, r)
 
 			result := w.Result()

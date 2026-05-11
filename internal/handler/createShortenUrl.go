@@ -11,7 +11,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/validator"
 )
 
-func CreateShortenURL(shortenUrlService *service.ShortenURLService) http.HandlerFunc {
+func CreateShortenURL(svc *service.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -35,12 +35,22 @@ func CreateShortenURL(shortenUrlService *service.ShortenURLService) http.Handler
 			return
 		}
 
-		keyURL := shortenUrlService.Set(string(body))
+		ctx := r.Context()
+		keyURL, isNew, err := svc.Save(ctx, string(body))
 
-		w.Header().Set("Content-type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusCreated)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		fullURL := fmt.Sprintf("%s/%s", config.Envs.BaseURL, keyURL)
+		w.Header().Set("Content-type", "text/plain; charset=utf-8")
+
+		if !isNew {
+			w.WriteHeader(http.StatusConflict)
+		} else {
+			w.WriteHeader(http.StatusCreated)
+		}
 
 		w.Write([]byte(fullURL))
 	}

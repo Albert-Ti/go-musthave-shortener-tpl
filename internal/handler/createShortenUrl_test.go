@@ -5,34 +5,38 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreateShortURL(t *testing.T) {
-	config.Envs.FileStoragePath = "test.json"
-	shortenURLStorage, e := repository.NewShortenURLStorage()
+	tmpDir := t.TempDir()
+	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
+
+	repo, e := repository.NewRepository()
 	if e != nil {
 		panic(e)
 	}
-	defer func() {
-		shortenURLStorage.Close()
-		shortenURLStorage.Remove()
-	}()
-	shortenUrlService := service.NewShortenURLService(shortenURLStorage)
+	defer repo.Close()
 
-	handler := CreateShortenURL(shortenUrlService)
+	svc := service.NewService(repo)
+
+	handler := CreateShortenURL(svc)
 	srv := httptest.NewServer(handler)
 
 	defer srv.Close()
 
 	config.Envs.BaseURL = srv.URL
+
+	defer utils.GenerateMockUUID()()
 
 	type want struct {
 		method   string

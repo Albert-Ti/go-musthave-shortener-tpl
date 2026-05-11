@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -15,39 +16,42 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreateShortURLJSON(t *testing.T) {
-	config.Envs.FileStoragePath = "test.json"
-	shortenURLStorage, e := repository.NewShortenURLStorage()
+	tmpDir := t.TempDir()
+	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
+
+	repo, e := repository.NewRepository()
 	if e != nil {
 		panic(e)
 	}
-	defer func() {
-		shortenURLStorage.Close()
-		shortenURLStorage.Remove()
-	}()
-	shortenURLService := service.NewShortenURLService(shortenURLStorage)
+	defer repo.Close()
 
-	handler := CreateShortenURLJSON(shortenURLService)
+	svc := service.NewService(repo)
+
+	handler := CreateShortenURLJSON(svc)
 	srv := httptest.NewServer(middleware.GzipCompress(handler))
 
 	defer srv.Close()
 
 	config.Envs.BaseURL = srv.URL
 
-	reqJSON, err := json.Marshal(model.ShortenUrlRequest{URL: "https://yandex.ru"})
+	defer utils.GenerateMockUUID()()
+
+	reqJSON, err := json.Marshal(model.JSONReq{URL: "https://yandex.ru"})
 	require.NoError(t, err)
 
-	respJSON, err := json.Marshal(model.ShortenUrlResponse{Result: srv.URL + "/key_1"})
+	respJSON, err := json.Marshal(model.JSONResp{Result: srv.URL + "/key_1"})
 	require.NoError(t, err)
 
-	respJSON2, err := json.Marshal(model.ShortenUrlResponse{Result: srv.URL + "/key_2"})
+	respJSON2, err := json.Marshal(model.JSONResp{Result: srv.URL + "/key_2"})
 	require.NoError(t, err)
 
-	respJSON3, err := json.Marshal(model.ShortenUrlResponse{Result: srv.URL + "/key_3"})
+	respJSON3, err := json.Marshal(model.JSONResp{Result: srv.URL + "/key_3"})
 	require.NoError(t, err)
 
 	type want struct {
@@ -157,8 +161,8 @@ func TestCreateShortURLJSON(t *testing.T) {
 			gotBody := strings.TrimSpace(string(responseBody))
 
 			assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))
-			assert.Equal(t, tt.want.response, gotBody)
 			assert.Equal(t, tt.want.code, resp.StatusCode)
+			assert.Equal(t, tt.want.response, gotBody)
 		})
 	}
 }
