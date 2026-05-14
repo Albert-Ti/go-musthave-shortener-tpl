@@ -37,6 +37,7 @@ func main() {
 	r.Get("/ping", handler.PingDatabase(svc))
 	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc))
 	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(svc))
+	r.Get("/api/user/urls", myMiddleware.AuthGuard(handler.GetShortenURLs(svc)))
 
 	slog.Info("Running server", "host", config.Envs.RunAddr)
 

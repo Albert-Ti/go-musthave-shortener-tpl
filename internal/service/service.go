@@ -14,14 +14,29 @@ type Service struct {
 	repository repository.Repository
 }
 
-func NewService(r repository.Repository) *Service {
-	return &Service{
-		repository: r,
-	}
+func NewService(repo repository.Repository) *Service {
+	return &Service{repository: repo}
 }
 
 func (s *Service) Get(ctx context.Context, key string) (string, error) {
 	return s.repository.Get(ctx, key)
+}
+
+func (s *Service) GetAll(ctx context.Context) ([]model.JSONGetAllResp, error) {
+	urls, err := s.repository.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	results := []model.JSONGetAllResp{}
+
+	for i := range urls {
+		results = append(results, model.JSONGetAllResp{
+			ShortURL:    urls[i]["key"],
+			OriginalURL: urls[i]["url"],
+		})
+	}
+
+	return results, nil
 }
 
 func (s *Service) Save(ctx context.Context, url string) (string, bool, error) {

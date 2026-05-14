@@ -13,11 +13,6 @@ type PostgresStorage struct {
 	conn *pgx.Conn
 }
 
-type shortenURLRecord struct {
-	key string
-	url string
-}
-
 func NewPostgresStorage(path string) (*PostgresStorage, error) {
 	conn, err := pgx.Connect(context.Background(), path)
 	if err != nil {
@@ -29,24 +24,47 @@ func NewPostgresStorage(path string) (*PostgresStorage, error) {
 	}, nil
 }
 
-func (pg *PostgresStorage) Get(ctx context.Context, key string) (string, error) {
-	var u shortenURLRecord
+func (ps *PostgresStorage) Get(ctx context.Context, key string) (string, error) {
+	var url string
 
-	queryStr := `
-		SELECT key, url 
-		FROM shorten_url 
-		WHERE key = $1
-	`
+	queryStr := `SELECT url FROM shorten_url WHERE key = $1`
 
-	err := pg.conn.QueryRow(ctx, queryStr, key).Scan(&u.key, &u.url)
+	err := ps.conn.QueryRow(ctx, queryStr, key).Scan(&url)
 	if err != nil {
 		return "", err
 	}
 
-	return u.url, nil
+	return url, nil
 }
 
-func (pg *PostgresStorage) Save(ctx context.Context, key string, url string) (string, error) {
+func (ps *PostgresStorage) GetAll(ctx context.Context) ([]map[string]string, error) {
+
+	queryStr := `SELECT key, url FROM shorten_url`
+
+	rows, err := ps.conn.Query(ctx, queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	var results = make([]map[string]string, 0)
+
+	for rows.Next() {
+		var key, url string
+
+		err := rows.Scan(&key, &url)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, map[string]string{
+			"key": key,
+			"url": url,
+		})
+	}
+
+	return results, nil
+}
+
+func (ps *PostgresStorage) Save(ctx context.Context, key string, url string) (string, error) {
 
 	queryStr := `
 		INSERT INTO shorten_url (key, url)
@@ -57,7 +75,7 @@ func (pg *PostgresStorage) Save(ctx context.Context, key string, url string) (st
 	`
 
 	var returnedKey string
-	err := pg.conn.QueryRow(ctx, queryStr, key, url).Scan(&returnedKey)
+	err := ps.conn.QueryRow(ctx, queryStr, key, url).Scan(&returnedKey)
 
 	if err != nil {
 		return "", err
@@ -70,10 +88,10 @@ func (pg *PostgresStorage) Save(ctx context.Context, key string, url string) (st
 	return key, nil
 }
 
-func (pg *PostgresStorage) Ping(ctx context.Context) error {
-	return pg.conn.Ping(ctx)
+func (ps *PostgresStorage) Ping(ctx context.Context) error {
+	return ps.conn.Ping(ctx)
 }
 
-func (pg *PostgresStorage) Close() error {
-	return pg.conn.Close(context.Background())
+func (ps *PostgresStorage) Close() error {
+	return ps.conn.Close(context.Background())
 }

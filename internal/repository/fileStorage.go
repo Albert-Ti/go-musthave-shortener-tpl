@@ -47,21 +47,33 @@ func NewFileStorage(path string) (*FileStorage, error) {
 	}, nil
 }
 
-func (u *FileStorage) Get(ctx context.Context, key string) (string, error) {
-	return u.urls[key], nil
+func (fs *FileStorage) Get(ctx context.Context, key string) (string, error) {
+	return fs.urls[key], nil
 }
 
-func (u *FileStorage) Save(ctx context.Context, key string, url string) (string, error) {
+func (fs *FileStorage) GetAll(ctx context.Context) ([]map[string]string, error) {
+
+	var results = make([]map[string]string, 0)
+	for k, v := range fs.urls {
+		results = append(results, map[string]string{
+			"key": k,
+			"url": v,
+		})
+	}
+	return results, nil
+}
+
+func (fs *FileStorage) Save(ctx context.Context, key string, url string) (string, error) {
 
 	record := &filRecord{
-		Uuid:        len(u.urls) + 1,
+		Uuid:        len(fs.urls) + 1,
 		ShortURL:    key,
 		OriginalURL: url,
 	}
 
-	u.urls[key] = url
+	fs.urls[key] = url
 
-	if err := u.encoder.Encode(&record); err != nil {
+	if err := fs.encoder.Encode(&record); err != nil {
 		return "", err
 	}
 

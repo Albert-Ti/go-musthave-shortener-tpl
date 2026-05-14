@@ -12,20 +12,31 @@ func NewMemoryStorage() (*MemoryStorage, error) {
 	return &MemoryStorage{urls: map[string]string{}}, nil
 }
 
-func (u *MemoryStorage) Get(ctx context.Context, key string) (string, error) {
-	return u.urls[key], nil
+func (ms *MemoryStorage) Get(ctx context.Context, key string) (string, error) {
+	return ms.urls[key], nil
+}
+func (ms *MemoryStorage) GetAll(ctx context.Context) ([]map[string]string, error) {
+
+	var results = make([]map[string]string, 0)
+	for k, v := range ms.urls {
+		results = append(results, map[string]string{
+			"key": k,
+			"url": v,
+		})
+	}
+	return results, nil
 }
 
-func (u *MemoryStorage) Save(ctx context.Context, key string, url string) (string, error) {
-	u.urls[key] = url
+func (ms *MemoryStorage) Save(ctx context.Context, key string, url string) (string, error) {
+	ms.urls[key] = url
 
 	return key, nil
 }
 
-func (u *MemoryStorage) Close() error {
+func (ms *MemoryStorage) Close() error {
 	return nil
 }
 
-func (u *MemoryStorage) Ping(ctx context.Context) error {
+func (ms *MemoryStorage) Ping(ctx context.Context) error {
 	return nil
 }
