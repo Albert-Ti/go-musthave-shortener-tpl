@@ -26,10 +26,9 @@ func TestRedirectByKeyURL(t *testing.T) {
 		panic(e)
 	}
 	defer repo.Close()
+	svc := service.NewService(repo)
 
 	defer utils.GenerateMockUUID()()
-
-	svc := service.NewService(repo)
 
 	ctx := context.Background()
 	svc.Save(ctx, "http://yandex.ru")
@@ -69,7 +68,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 			endpoint: "/unknown",
 			want: want{
 				method:   http.MethodGet,
-				code:     http.StatusBadRequest,
+				code:     http.StatusNotFound,
 				response: "URL not found",
 			},
 		},

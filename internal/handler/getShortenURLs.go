@@ -21,6 +21,11 @@ func GetShortenURLs(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
+		if len(resp) == 0 {
+			http.Error(w, "", http.StatusNoContent)
+			return
+		}
+		w.Header().Add("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

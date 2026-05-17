@@ -17,14 +17,10 @@ func RedirectByKeyURL(svc *service.Service) http.HandlerFunc {
 		param := strings.TrimPrefix(r.URL.Path, "/")
 
 		ctx := r.Context()
-		url, err := svc.Get(ctx, param)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		url, _ := svc.Get(ctx, param)
 
 		if url == "" {
-			http.Error(w, "URL not found", http.StatusBadRequest)
+			http.Error(w, "URL not found", http.StatusNotFound)
 			return
 		}
 
