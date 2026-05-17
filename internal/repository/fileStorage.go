@@ -51,7 +51,7 @@ func (fs *FileStorage) Get(ctx context.Context, key string) (string, error) {
 	return fs.urls[key], nil
 }
 
-func (fs *FileStorage) GetAll(ctx context.Context) ([]map[string]string, error) {
+func (fs *FileStorage) GetAllByUserID(ctx context.Context, userID string) ([]map[string]string, error) {
 
 	var results = make([]map[string]string, 0)
 	for k, v := range fs.urls {

@@ -15,7 +15,8 @@ func NewMemoryStorage() (*MemoryStorage, error) {
 func (ms *MemoryStorage) Get(ctx context.Context, key string) (string, error) {
 	return ms.urls[key], nil
 }
-func (ms *MemoryStorage) GetAll(ctx context.Context) ([]map[string]string, error) {
+
+func (ms *MemoryStorage) GetAllByUserID(ctx context.Context, userID string) ([]map[string]string, error) {
 
 	var results = make([]map[string]string, 0)
 	for k, v := range ms.urls {

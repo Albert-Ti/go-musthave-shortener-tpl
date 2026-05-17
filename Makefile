@@ -9,7 +9,7 @@ run:
 run-file:
 	go run cmd/shortener/main.go -f="file_storage.json"
 
-run-postgres: docker-up
+run-postgres:
 	go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable"
 
 ping:
@@ -30,6 +30,9 @@ migrate-down:
 
 migrate-v:
 	migrate -database "$(DB_URL)" -path $(MIGRATIONS_PATH) version
+
+migrate-status:
+	migrate -database "$(DB_URL)" -path "$(MIGRATIONS_PATH)" status
 
 migrate-force:
 	@test -n "$(version)" || (echo "Error: version is required. Use: make migrate-force version=1" && exit 1)

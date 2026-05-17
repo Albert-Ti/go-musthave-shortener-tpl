@@ -63,19 +63,19 @@ func (mr *MockRepositoryMockRecorder) Get(ctx, key interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), ctx, key)
 }
 
-// GetAll mocks base method.
-func (m *MockRepository) GetAll(ctx context.Context) ([]map[string]string, error) {
+// GetAllByUserID mocks base method.
+func (m *MockRepository) GetAllByUserID(ctx context.Context, userID string) ([]map[string]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAll", ctx)
+	ret := m.ctrl.Call(m, "GetAllByUserID", ctx, userID)
 	ret0, _ := ret[0].([]map[string]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAll indicates an expected call of GetAll.
-func (mr *MockRepositoryMockRecorder) GetAll(ctx interface{}) *gomock.Call {
+// GetAllByUserID indicates an expected call of GetAllByUserID.
+func (mr *MockRepositoryMockRecorder) GetAllByUserID(ctx, userID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockRepository)(nil).GetAll), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllByUserID", reflect.TypeOf((*MockRepository)(nil).GetAllByUserID), ctx, userID)
 }
 
 // Ping mocks base method.

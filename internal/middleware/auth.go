@@ -9,6 +9,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const UserIDKey string = "userID"
+
 var secretKey = []byte(config.Envs.JWTSecretKey)
 
 type MyCustomClaims struct {
@@ -39,13 +41,13 @@ func createCookie(name string, value string) *http.Cookie {
 
 func AuthGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var userID string
+		var authorizedUserID string
 
 		cookie, err := r.Cookie("token")
 		if err != nil {
-			userID = "123"
+			authorizedUserID = "123"
 
-			token, err := createToken(userID)
+			token, err := createToken(authorizedUserID)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -67,10 +69,10 @@ func AuthGuard(next http.Handler) http.Handler {
 				return
 			}
 
-			userID = claims.UserID
+			authorizedUserID = claims.UserID
 		}
 
-		ctx := context.WithValue(r.Context(), "userID", userID)
+		ctx := context.WithValue(r.Context(), UserIDKey, authorizedUserID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

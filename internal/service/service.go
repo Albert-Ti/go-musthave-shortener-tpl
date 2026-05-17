@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
@@ -22,8 +23,10 @@ func (s *Service) Get(ctx context.Context, key string) (string, error) {
 	return s.repository.Get(ctx, key)
 }
 
-func (s *Service) GetAll(ctx context.Context) ([]model.JSONGetAllResp, error) {
-	urls, err := s.repository.GetAll(ctx)
+func (s *Service) GetAllByUserID(ctx context.Context) ([]model.JSONGetAllResp, error) {
+	userID := ctx.Value(middleware.UserIDKey).(string)
+
+	urls, err := s.repository.GetAllByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

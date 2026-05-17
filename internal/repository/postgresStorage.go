@@ -37,11 +37,11 @@ func (ps *PostgresStorage) Get(ctx context.Context, key string) (string, error) 
 	return url, nil
 }
 
-func (ps *PostgresStorage) GetAll(ctx context.Context) ([]map[string]string, error) {
+func (ps *PostgresStorage) GetAllByUserID(ctx context.Context, userID string) ([]map[string]string, error) {
 
-	queryStr := `SELECT key, url FROM shorten_url`
+	queryStr := `SELECT key, url FROM shorten_url WHERE user_id = $1`
 
-	rows, err := ps.conn.Query(ctx, queryStr)
+	rows, err := ps.conn.Query(ctx, queryStr, userID)
 	if err != nil {
 		return nil, err
 	}
