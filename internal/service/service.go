@@ -31,7 +31,7 @@ func (s *Service) GetAll(ctx context.Context) ([]model.JSONGetAllResp, error) {
 
 	for i := range urls {
 		results = append(results, model.JSONGetAllResp{
-			ShortURL:    urls[i]["key"],
+			ShortURL:    config.Envs.BaseURL + "/" + urls[i]["key"],
 			OriginalURL: urls[i]["url"],
 		})
 	}
