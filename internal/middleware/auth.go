@@ -2,10 +2,12 @@ package middleware
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -41,11 +43,12 @@ func createCookie(name string, value string) *http.Cookie {
 
 func AuthGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("token")
 		var authorizedUserID string
 
-		cookie, err := r.Cookie("token")
 		if err != nil {
-			authorizedUserID = "123"
+			slog.Error("cookie error", "error", err)
+			authorizedUserID = utils.GenerateUUID()
 
 			token, err := createToken(authorizedUserID)
 			if err != nil {
@@ -56,13 +59,14 @@ func AuthGuard(next http.Handler) http.Handler {
 			cookie := createCookie("token", token)
 			http.SetCookie(w, cookie)
 		} else {
+			slog.Info("cookie exists")
+
 			claims := &MyCustomClaims{}
 			_, err := jwt.ParseWithClaims(cookie.Value, claims, func(t *jwt.Token) (any, error) {
 				return secretKey, nil
 			})
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
+				slog.Error("jwt parse error", "error", err)
 			}
 			if claims.UserID == "" {
 				w.WriteHeader(http.StatusUnauthorized)
