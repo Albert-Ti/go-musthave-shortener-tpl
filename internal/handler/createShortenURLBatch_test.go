@@ -3,6 +3,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -168,12 +169,18 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			}
 
 			svc := service.NewService(mockRepo)
-			handler := middleware.AuthGuard(CreateShortenURLBatch(svc))
+			handler := CreateShortenURLBatch(svc)
 
 			bodyBytes, err := json.Marshal(tt.body)
 			require.NoError(t, err)
 
-			req := httptest.NewRequest(tt.method, "/api/shorten/batch", bytes.NewReader(bodyBytes))
+			req := httptest.NewRequestWithContext(
+				context.WithValue(context.Background(),
+					middleware.UserIDKey, "123"),
+				tt.method,
+				"/api/shorten/batch",
+				bytes.NewReader(bodyBytes),
+			)
 			req.Header.Set("Content-Type", tt.contentType)
 
 			rr := httptest.NewRecorder()

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -30,8 +31,12 @@ func TestCreateShortURL(t *testing.T) {
 
 	svc := service.NewService(repo)
 
-	handler := CreateShortenURL(svc)
-	srv := httptest.NewServer(middleware.AuthGuard(handler))
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), middleware.UserIDKey, "123")
+		r = r.WithContext(ctx)
+		CreateShortenURL(svc)(w, r)
+	})
+	srv := httptest.NewServer(handler)
 
 	defer srv.Close()
 

@@ -80,15 +80,12 @@ func TestGetShortenURLs(t *testing.T) {
 
 			svc := service.NewService(mockRepo)
 
-			req := httptest.NewRequest(tt.method, "/api/user/urls", nil)
-
 			ctx := context.WithValue(
-				req.Context(),
+				context.Background(),
 				middleware.UserIDKey,
 				"123",
 			)
-
-			req = req.WithContext(ctx)
+			req := httptest.NewRequestWithContext(ctx, tt.method, "/api/user/urls", nil)
 
 			rr := httptest.NewRecorder()
 
