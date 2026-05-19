@@ -14,7 +14,7 @@ func GetShortenURLs(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
-		resp, err := svc.GetAllByUserID(r.Context())
+		resp, err := svc.GetAll(r.Context())
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

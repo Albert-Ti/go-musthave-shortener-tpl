@@ -63,19 +63,19 @@ func (mr *MockRepositoryMockRecorder) Get(ctx, key interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), ctx, key)
 }
 
-// GetAllByUserID mocks base method.
-func (m *MockRepository) GetAllByUserID(ctx context.Context, userID string) ([]map[string]string, error) {
+// GetAll mocks base method.
+func (m *MockRepository) GetAll(ctx context.Context, userID string) ([]map[string]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAllByUserID", ctx, userID)
+	ret := m.ctrl.Call(m, "GetAll", ctx, userID)
 	ret0, _ := ret[0].([]map[string]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAllByUserID indicates an expected call of GetAllByUserID.
-func (mr *MockRepositoryMockRecorder) GetAllByUserID(ctx, userID interface{}) *gomock.Call {
+// GetAll indicates an expected call of GetAll.
+func (mr *MockRepositoryMockRecorder) GetAll(ctx, userID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllByUserID", reflect.TypeOf((*MockRepository)(nil).GetAllByUserID), ctx, userID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockRepository)(nil).GetAll), ctx, userID)
 }
 
 // Ping mocks base method.
@@ -93,16 +93,16 @@ func (mr *MockRepositoryMockRecorder) Ping(ctx interface{}) *gomock.Call {
 }
 
 // Save mocks base method.
-func (m *MockRepository) Save(ctx context.Context, key, value string) (string, error) {
+func (m *MockRepository) Save(ctx context.Context, key, value, userID string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", ctx, key, value)
+	ret := m.ctrl.Call(m, "Save", ctx, key, value, userID)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Save indicates an expected call of Save.
-func (mr *MockRepositoryMockRecorder) Save(ctx, key, value interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) Save(ctx, key, value, userID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockRepository)(nil).Save), ctx, key, value)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockRepository)(nil).Save), ctx, key, value, userID)
 }

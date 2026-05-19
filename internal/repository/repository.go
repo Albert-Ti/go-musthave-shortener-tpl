@@ -12,15 +12,15 @@ import (
 
 type Repository interface {
 	Get(ctx context.Context, key string) (string, error)
-	GetAllByUserID(ctx context.Context, userID string) ([]map[string]string, error)
-	Save(ctx context.Context, key string, value string) (string, error)
+	GetAll(ctx context.Context, userID string) ([]map[string]string, error)
+	Save(ctx context.Context, key string, url string, userID string) (string, error)
 	Ping(ctx context.Context) error
 	Close() error
 }
 
 func NewRepository() (Repository, error) {
 	if config.Envs.DatabaseDSN != "" {
-		slog.Debug("Using database storage")
+		slog.Info("Using database storage")
 
 		m, err := migrate.New("file://migrations", config.Envs.DatabaseDSN)
 		if err != nil {
@@ -31,9 +31,9 @@ func NewRepository() (Repository, error) {
 		err = m.Up()
 		switch err {
 		case nil:
-			slog.Debug("Migrations have been successfully applied")
+			slog.Info("Migrations have been successfully applied")
 		case migrate.ErrNoChange:
-			slog.Debug("The database schema is up-to-date and no migrations are required")
+			slog.Info("The database schema is up-to-date and no migrations are required")
 		default:
 			slog.Error("Migrations failed", "error", err)
 			return nil, err

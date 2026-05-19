@@ -23,10 +23,10 @@ func (s *Service) Get(ctx context.Context, key string) (string, error) {
 	return s.repository.Get(ctx, key)
 }
 
-func (s *Service) GetAllByUserID(ctx context.Context) ([]model.JSONGetAllResp, error) {
+func (s *Service) GetAll(ctx context.Context) ([]model.JSONGetAllResp, error) {
 	userID := ctx.Value(middleware.UserIDKey).(string)
 
-	urls, err := s.repository.GetAllByUserID(ctx, userID)
+	urls, err := s.repository.GetAll(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -44,8 +44,9 @@ func (s *Service) GetAllByUserID(ctx context.Context) ([]model.JSONGetAllResp, e
 
 func (s *Service) Save(ctx context.Context, url string) (string, bool, error) {
 	key := utils.GenerateUUID()
+	userID := ctx.Value(middleware.UserIDKey).(string)
 
-	savedKey, err := s.repository.Save(ctx, key, url)
+	savedKey, err := s.repository.Save(ctx, key, url, userID)
 	if err != nil {
 		if errors.Is(err, repository.ErrConflict) {
 			return savedKey, false, nil
@@ -62,8 +63,9 @@ func (s *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq) ([]
 
 	for _, v := range batch {
 		key := utils.GenerateUUID()
+		userID := ctx.Value(middleware.UserIDKey).(string)
 
-		savedKey, err := s.repository.Save(ctx, key, v.OriginalURL)
+		savedKey, err := s.repository.Save(ctx, key, v.OriginalURL, userID)
 		if errors.Is(err, repository.ErrConflict) {
 			hasConflict = true
 		}

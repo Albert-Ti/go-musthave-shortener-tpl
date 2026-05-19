@@ -34,7 +34,9 @@ func TestCreateShortURLJSON(t *testing.T) {
 	svc := service.NewService(repo)
 
 	handler := CreateShortenURLJSON(svc)
-	srv := httptest.NewServer(middleware.GzipCompress(handler))
+	srv := httptest.NewServer(middleware.GzipCompress(
+		middleware.AuthGuard(handler),
+	))
 
 	defer srv.Close()
 
@@ -133,9 +135,10 @@ func TestCreateShortURLJSON(t *testing.T) {
 			if tt.want.method == http.MethodGet {
 				req, err = http.NewRequest(http.MethodGet, srv.URL, nil)
 				require.NoError(t, err)
+			} else {
+				req, err = http.NewRequest(tt.want.method, srv.URL, bodyReader)
+				require.NoError(t, err)
 			}
-			req, err = http.NewRequest(tt.want.method, srv.URL, bodyReader)
-			require.NoError(t, err)
 
 			req.Header.Set("Content-Type", tt.contentType)
 			client := &http.Client{}

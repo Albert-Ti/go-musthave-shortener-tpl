@@ -41,7 +41,7 @@ func TestGetShortenURLs(t *testing.T) {
 				}
 
 				mock.EXPECT().
-					GetAllByUserID(gomock.Any(), "123").
+					GetAll(gomock.Any(), "123").
 					Return(expectedURLs, nil).Times(1)
 			},
 		},
@@ -53,7 +53,7 @@ func TestGetShortenURLs(t *testing.T) {
 			statusCode:  http.StatusNoContent,
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					GetAllByUserID(gomock.Any(), "123").
+					GetAll(gomock.Any(), "123").
 					Return(nil, nil).Times(1)
 			},
 		},

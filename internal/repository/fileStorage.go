@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 )
@@ -10,7 +11,7 @@ import (
 type FileStorage struct {
 	element *os.File
 	encoder *json.Encoder
-	urls    map[string]string
+	urls    []map[string]string
 }
 
 type filRecord struct {
@@ -25,7 +26,7 @@ func NewFileStorage(path string) (*FileStorage, error) {
 		return nil, err
 	}
 
-	urls := map[string]string{}
+	urls := []map[string]string{}
 	decoder := json.NewDecoder(file)
 
 	for {
@@ -37,7 +38,11 @@ func NewFileStorage(path string) (*FileStorage, error) {
 		if err != nil {
 			panic(err)
 		}
-		urls[record.ShortURL] = record.OriginalURL
+		urls = append(urls, map[string]string{
+			"key":     record.ShortURL,
+			"url":     record.OriginalURL,
+			"user_id": "unknown",
+		})
 	}
 
 	return &FileStorage{
@@ -48,30 +53,38 @@ func NewFileStorage(path string) (*FileStorage, error) {
 }
 
 func (fs *FileStorage) Get(ctx context.Context, key string) (string, error) {
-	return fs.urls[key], nil
+	for i := range fs.urls {
+		if fs.urls[i]["key"] == key {
+			return fs.urls[i]["url"], nil
+		}
+	}
+	return "", errors.New("No Content")
 }
 
-func (fs *FileStorage) GetAllByUserID(ctx context.Context, userID string) ([]map[string]string, error) {
-
+func (fs *FileStorage) GetAll(ctx context.Context, userID string) ([]map[string]string, error) {
 	var results = make([]map[string]string, 0)
-	for k, v := range fs.urls {
-		results = append(results, map[string]string{
-			"key": k,
-			"url": v,
-		})
+
+	for i := range fs.urls {
+		if fs.urls[i]["user_id"] == userID {
+			results = append(results, fs.urls[i])
+		}
 	}
+
 	return results, nil
 }
 
-func (fs *FileStorage) Save(ctx context.Context, key string, url string) (string, error) {
-
+func (fs *FileStorage) Save(ctx context.Context, key string, url string, userID string) (string, error) {
 	record := &filRecord{
 		Uuid:        len(fs.urls) + 1,
 		ShortURL:    key,
 		OriginalURL: url,
 	}
 
-	fs.urls[key] = url
+	fs.urls = append(fs.urls, map[string]string{
+		"key":     key,
+		"url":     url,
+		"user_id": userID,
+	})
 
 	if err := fs.encoder.Encode(&record); err != nil {
 		return "", err

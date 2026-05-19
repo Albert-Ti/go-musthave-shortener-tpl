@@ -37,7 +37,7 @@ func (ps *PostgresStorage) Get(ctx context.Context, key string) (string, error) 
 	return url, nil
 }
 
-func (ps *PostgresStorage) GetAllByUserID(ctx context.Context, userID string) ([]map[string]string, error) {
+func (ps *PostgresStorage) GetAll(ctx context.Context, userID string) ([]map[string]string, error) {
 
 	queryStr := `SELECT key, url FROM shorten_url WHERE user_id = $1`
 
@@ -64,18 +64,18 @@ func (ps *PostgresStorage) GetAllByUserID(ctx context.Context, userID string) ([
 	return results, nil
 }
 
-func (ps *PostgresStorage) Save(ctx context.Context, key string, url string) (string, error) {
+func (ps *PostgresStorage) Save(ctx context.Context, key string, url string, userID string) (string, error) {
 
 	queryStr := `
-		INSERT INTO shorten_url (key, url)
-		VALUES ($1, $2)
+		INSERT INTO shorten_url (key, url, user_id)
+		VALUES ($1, $2, $3)
 		ON CONFLICT (url)
 		DO UPDATE SET url = shorten_url.url
 		RETURNING key
 	`
 
 	var returnedKey string
-	err := ps.conn.QueryRow(ctx, queryStr, key, url).Scan(&returnedKey)
+	err := ps.conn.QueryRow(ctx, queryStr, key, url, userID).Scan(&returnedKey)
 
 	if err != nil {
 		return "", err

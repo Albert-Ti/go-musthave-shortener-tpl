@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
@@ -30,7 +31,7 @@ func TestCreateShortURL(t *testing.T) {
 	svc := service.NewService(repo)
 
 	handler := CreateShortenURL(svc)
-	srv := httptest.NewServer(handler)
+	srv := httptest.NewServer(middleware.AuthGuard(handler))
 
 	defer srv.Close()
 
