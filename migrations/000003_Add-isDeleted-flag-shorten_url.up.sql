@@ -1,0 +1,1 @@
+ALTER TABLE shorten_url ADD COLUMN is_deleted BOOL NOT NULL DEFAULT FALSE;

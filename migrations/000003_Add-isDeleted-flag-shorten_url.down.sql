@@ -1,0 +1,1 @@
+ALTER TABLE shorten_url DROP COLUMN IF EXISTS is_deleted;
