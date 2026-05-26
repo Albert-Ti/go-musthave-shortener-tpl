@@ -44,6 +44,10 @@ func (ms *MemoryStorage) Save(ctx context.Context, key string, url string, userI
 	return key, nil
 }
 
+func (ms *MemoryStorage) BatchDelete(ctx context.Context, keys []string, userID string) error {
+	return nil
+}
+
 func (ms *MemoryStorage) Close() error {
 	return nil
 }

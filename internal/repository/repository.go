@@ -14,6 +14,7 @@ type Repository interface {
 	Get(ctx context.Context, key string) (string, error)
 	GetAll(ctx context.Context, userID string) ([]map[string]string, error)
 	Save(ctx context.Context, key string, url string, userID string) (string, error)
+	BatchDelete(ctx context.Context, keys []string, userID string) error
 	Ping(ctx context.Context) error
 	Close() error
 }

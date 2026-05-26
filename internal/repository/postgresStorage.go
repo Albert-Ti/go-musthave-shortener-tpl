@@ -8,6 +8,7 @@ import (
 )
 
 var ErrConflict error = errors.New("URL is already exist")
+var ErrStatusGone error = errors.New("URL deleted")
 
 type PostgresStorage struct {
 	conn *pgx.Conn
@@ -26,12 +27,15 @@ func NewPostgresStorage(path string) (*PostgresStorage, error) {
 
 func (ps *PostgresStorage) Get(ctx context.Context, key string) (string, error) {
 	var url string
+	var isDeleted bool
 
-	queryStr := `SELECT url FROM shorten_url WHERE key = $1`
-
-	err := ps.conn.QueryRow(ctx, queryStr, key).Scan(&url)
+	queryStr := `SELECT url, is_deleted FROM shorten_url WHERE key = $1`
+	err := ps.conn.QueryRow(ctx, queryStr, key).Scan(&url, &isDeleted)
 	if err != nil {
 		return "", err
+	}
+	if isDeleted {
+		return url, ErrStatusGone
 	}
 
 	return url, nil
@@ -86,6 +90,22 @@ func (ps *PostgresStorage) Save(ctx context.Context, key string, url string, use
 	}
 
 	return key, nil
+}
+
+func (ps *PostgresStorage) BatchDelete(ctx context.Context, keys []string, userID string) error {
+	queryStr := `
+		UPDATE shorten_url
+		SET is_deleted = true
+		WHERE user_id = $1
+		AND key = ANY($2)
+		AND is_deleted = false
+	`
+	_, err := ps.conn.Exec(ctx, queryStr, userID, keys)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (ps *PostgresStorage) Ping(ctx context.Context) error {

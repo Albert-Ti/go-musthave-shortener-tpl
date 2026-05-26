@@ -84,6 +84,17 @@ func (s *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq) ([]
 	return results, nil
 }
 
+func (s *Service) BatchDelete(ctx context.Context, keys []string) error {
+	userID := ctx.Value(middleware.UserIDKey).(string)
+
+	err := s.repository.BatchDelete(ctx, keys, userID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *Service) Ping(ctx context.Context) error {
 	return s.repository.Ping(ctx)
 }

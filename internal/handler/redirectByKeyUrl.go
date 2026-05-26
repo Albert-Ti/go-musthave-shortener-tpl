@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 )
 
@@ -17,10 +19,15 @@ func RedirectByKeyURL(svc *service.Service) http.HandlerFunc {
 		param := strings.TrimPrefix(r.URL.Path, "/")
 
 		ctx := r.Context()
-		url, _ := svc.Get(ctx, param)
+		url, err := svc.Get(ctx, param)
 
 		if url == "" {
 			http.Error(w, "URL not found", http.StatusNotFound)
+			return
+		}
+
+		if errors.Is(err, repository.ErrStatusGone) {
+			w.WriteHeader(http.StatusGone)
 			return
 		}
 

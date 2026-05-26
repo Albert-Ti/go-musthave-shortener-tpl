@@ -93,6 +93,10 @@ func (fs *FileStorage) Save(ctx context.Context, key string, url string, userID 
 	return key, nil
 }
 
+func (fs *FileStorage) BatchDelete(ctx context.Context, keys []string, userID string) error {
+	return nil
+}
+
 func (u *FileStorage) Close() error {
 	return u.element.Close()
 }

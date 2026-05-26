@@ -59,8 +59,6 @@ func AuthGuard(next http.Handler) http.Handler {
 			cookie := createCookie("token", token)
 			http.SetCookie(w, cookie)
 		} else {
-			slog.Info("cookie exists")
-
 			claims := &MyCustomClaims{}
 			_, err := jwt.ParseWithClaims(cookie.Value, claims, func(t *jwt.Token) (any, error) {
 				return secretKey, nil
