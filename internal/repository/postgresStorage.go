@@ -4,24 +4,24 @@ import (
 	"context"
 	"errors"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var ErrConflict error = errors.New("URL is already exist")
 var ErrStatusGone error = errors.New("URL deleted")
 
 type PostgresStorage struct {
-	conn *pgx.Conn
+	pool *pgxpool.Pool
 }
 
-func NewPostgresStorage(path string) (*PostgresStorage, error) {
-	conn, err := pgx.Connect(context.Background(), path)
+func NewPostgresStorage(dsn string) (*PostgresStorage, error) {
+	pool, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
 		return nil, err
 	}
 
 	return &PostgresStorage{
-		conn: conn,
+		pool: pool,
 	}, nil
 }
 
@@ -30,7 +30,7 @@ func (ps *PostgresStorage) Get(ctx context.Context, key string) (string, error) 
 	var isDeleted bool
 
 	queryStr := `SELECT url, is_deleted FROM shorten_url WHERE key = $1`
-	err := ps.conn.QueryRow(ctx, queryStr, key).Scan(&url, &isDeleted)
+	err := ps.pool.QueryRow(ctx, queryStr, key).Scan(&url, &isDeleted)
 	if err != nil {
 		return "", err
 	}
@@ -45,10 +45,11 @@ func (ps *PostgresStorage) GetAll(ctx context.Context, userID string) ([]map[str
 
 	queryStr := `SELECT key, url FROM shorten_url WHERE user_id = $1`
 
-	rows, err := ps.conn.Query(ctx, queryStr, userID)
+	rows, err := ps.pool.Query(ctx, queryStr, userID)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var results = make([]map[string]string, 0)
 
@@ -79,7 +80,7 @@ func (ps *PostgresStorage) Save(ctx context.Context, key string, url string, use
 	`
 
 	var returnedKey string
-	err := ps.conn.QueryRow(ctx, queryStr, key, url, userID).Scan(&returnedKey)
+	err := ps.pool.QueryRow(ctx, queryStr, key, url, userID).Scan(&returnedKey)
 
 	if err != nil {
 		return "", err
@@ -100,7 +101,7 @@ func (ps *PostgresStorage) BatchDelete(ctx context.Context, keys []string, userI
 		AND key = ANY($2)
 		AND is_deleted = false
 	`
-	_, err := ps.conn.Exec(ctx, queryStr, userID, keys)
+	_, err := ps.pool.Exec(ctx, queryStr, userID, keys)
 	if err != nil {
 		return err
 	}
@@ -109,9 +110,10 @@ func (ps *PostgresStorage) BatchDelete(ctx context.Context, keys []string, userI
 }
 
 func (ps *PostgresStorage) Ping(ctx context.Context) error {
-	return ps.conn.Ping(ctx)
+	return ps.pool.Ping(ctx)
 }
 
 func (ps *PostgresStorage) Close() error {
-	return ps.conn.Close(context.Background())
+	ps.pool.Close()
+	return nil
 }
