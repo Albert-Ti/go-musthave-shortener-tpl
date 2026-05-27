@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 )
 
@@ -13,8 +14,13 @@ func GetShortenURLs(svc *service.Service) http.HandlerFunc {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-
-		resp, err := svc.GetAll(r.Context())
+		ctx := r.Context()
+		userID, err := middleware.GetAuthUserID(ctx)
+		if err != nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		resp, err := svc.GetAll(ctx, userID)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

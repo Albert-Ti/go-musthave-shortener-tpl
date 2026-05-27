@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
@@ -35,7 +36,12 @@ func CreateShortenURLBatch(svc *service.Service) http.HandlerFunc {
 		}
 
 		ctx := r.Context()
-		resp, err := svc.BatchSave(ctx, dec)
+		userID, err := middleware.GetAuthUserID(ctx)
+		if err != nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		resp, err := svc.BatchSave(ctx, dec, userID)
 
 		statusCode := http.StatusCreated
 

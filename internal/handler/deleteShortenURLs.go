@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 )
 
@@ -23,14 +24,18 @@ func DeleteShortenURLs(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
+		userID, err := middleware.GetAuthUserID(r.Context())
+		if err != nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
 		w.WriteHeader(http.StatusAccepted)
 
-		ctx := context.WithoutCancel(r.Context())
-
-		go func() {
-			if err := svc.BatchDelete(ctx, keys); err != nil {
+		go func(keys []string, userID string) {
+			if err := svc.BatchDelete(context.Background(), keys, userID); err != nil {
 				slog.Error("batch delete failed", "error", err)
 			}
-		}()
+		}(keys, userID)
 	}
 }

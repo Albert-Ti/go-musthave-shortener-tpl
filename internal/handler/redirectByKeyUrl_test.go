@@ -30,7 +30,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 
 	ctx := context.WithValue(context.Background(), middleware.UserIDKey, "123")
 
-	savedKey, _, err := svc.Save(ctx, "http://yandex.ru")
+	savedKey, _, err := svc.Save(ctx, "http://yandex.ru", "123")
 	if err != nil {
 		t.Fatalf("Failed to save URL: %v", err)
 	}

@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
@@ -23,9 +22,7 @@ func (s *Service) Get(ctx context.Context, key string) (string, error) {
 	return s.repository.Get(ctx, key)
 }
 
-func (s *Service) GetAll(ctx context.Context) ([]model.JSONGetAllResp, error) {
-	userID := ctx.Value(middleware.UserIDKey).(string)
-
+func (s *Service) GetAll(ctx context.Context, userID string) ([]model.JSONGetAllResp, error) {
 	urls, err := s.repository.GetAll(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -42,9 +39,8 @@ func (s *Service) GetAll(ctx context.Context) ([]model.JSONGetAllResp, error) {
 	return results, nil
 }
 
-func (s *Service) Save(ctx context.Context, url string) (string, bool, error) {
+func (s *Service) Save(ctx context.Context, url string, userID string) (string, bool, error) {
 	key := utils.GenerateUUID()
-	userID := ctx.Value(middleware.UserIDKey).(string)
 
 	savedKey, err := s.repository.Save(ctx, key, url, userID)
 	if err != nil {
@@ -57,14 +53,12 @@ func (s *Service) Save(ctx context.Context, url string) (string, bool, error) {
 	return savedKey, true, nil
 }
 
-func (s *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq) ([]model.JSONBatchResp, error) {
+func (s *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq, userID string) ([]model.JSONBatchResp, error) {
 	results := make([]model.JSONBatchResp, 0)
 	hasConflict := false
 
 	for _, v := range batch {
 		key := utils.GenerateUUID()
-		userID := ctx.Value(middleware.UserIDKey).(string)
-
 		savedKey, err := s.repository.Save(ctx, key, v.OriginalURL, userID)
 		if errors.Is(err, repository.ErrConflict) {
 			hasConflict = true
@@ -84,9 +78,7 @@ func (s *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq) ([]
 	return results, nil
 }
 
-func (s *Service) BatchDelete(ctx context.Context, keys []string) error {
-	userID := ctx.Value(middleware.UserIDKey).(string)
-
+func (s *Service) BatchDelete(ctx context.Context, keys []string, userID string) error {
 	err := s.repository.BatchDelete(ctx, keys, userID)
 	if err != nil {
 		return err
