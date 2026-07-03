@@ -31,12 +31,15 @@ func main() {
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(myMiddleware.WithLogging)
 	r.Use(myMiddleware.GzipCompress)
+	r.Use(myMiddleware.AuthGuard)
 
 	r.Post("/", handler.CreateShortenURL(svc))
 	r.Get("/{id}", handler.RedirectByKeyURL(svc))
 	r.Get("/ping", handler.PingDatabase(svc))
 	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc))
 	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(svc))
+	r.Get("/api/user/urls", handler.GetShortenURLs(svc))
+	r.Delete("/api/user/urls", handler.DeleteShortenURLs(svc))
 
 	slog.Info("Running server", "host", config.Envs.RunAddr)
 

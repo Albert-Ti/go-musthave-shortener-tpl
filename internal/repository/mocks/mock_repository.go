@@ -34,6 +34,20 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
+// BatchDelete mocks base method.
+func (m *MockRepository) BatchDelete(ctx context.Context, keys []string, userID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BatchDelete", ctx, keys, userID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BatchDelete indicates an expected call of BatchDelete.
+func (mr *MockRepositoryMockRecorder) BatchDelete(ctx, keys, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchDelete", reflect.TypeOf((*MockRepository)(nil).BatchDelete), ctx, keys, userID)
+}
+
 // Close mocks base method.
 func (m *MockRepository) Close() error {
 	m.ctrl.T.Helper()
@@ -63,6 +77,21 @@ func (mr *MockRepositoryMockRecorder) Get(ctx, key interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRepository)(nil).Get), ctx, key)
 }
 
+// GetAll mocks base method.
+func (m *MockRepository) GetAll(ctx context.Context, userID string) ([]map[string]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAll", ctx, userID)
+	ret0, _ := ret[0].([]map[string]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAll indicates an expected call of GetAll.
+func (mr *MockRepositoryMockRecorder) GetAll(ctx, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockRepository)(nil).GetAll), ctx, userID)
+}
+
 // Ping mocks base method.
 func (m *MockRepository) Ping(ctx context.Context) error {
 	m.ctrl.T.Helper()
@@ -78,16 +107,16 @@ func (mr *MockRepositoryMockRecorder) Ping(ctx interface{}) *gomock.Call {
 }
 
 // Save mocks base method.
-func (m *MockRepository) Save(ctx context.Context, key, value string) (string, error) {
+func (m *MockRepository) Save(ctx context.Context, key, url, userID string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", ctx, key, value)
+	ret := m.ctrl.Call(m, "Save", ctx, key, url, userID)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Save indicates an expected call of Save.
-func (mr *MockRepositoryMockRecorder) Save(ctx, key, value interface{}) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) Save(ctx, key, url, userID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockRepository)(nil).Save), ctx, key, value)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockRepository)(nil).Save), ctx, key, url, userID)
 }

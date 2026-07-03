@@ -14,20 +14,35 @@ type Service struct {
 	repository repository.Repository
 }
 
-func NewService(r repository.Repository) *Service {
-	return &Service{
-		repository: r,
-	}
+func NewService(repo repository.Repository) *Service {
+	return &Service{repository: repo}
 }
 
 func (s *Service) Get(ctx context.Context, key string) (string, error) {
 	return s.repository.Get(ctx, key)
 }
 
-func (s *Service) Save(ctx context.Context, url string) (string, bool, error) {
+func (s *Service) GetAll(ctx context.Context, userID string) ([]model.JSONGetAllResp, error) {
+	urls, err := s.repository.GetAll(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	results := []model.JSONGetAllResp{}
+
+	for i := range urls {
+		results = append(results, model.JSONGetAllResp{
+			ShortURL:    config.Envs.BaseURL + "/" + urls[i]["key"],
+			OriginalURL: urls[i]["url"],
+		})
+	}
+
+	return results, nil
+}
+
+func (s *Service) Save(ctx context.Context, url string, userID string) (string, bool, error) {
 	key := utils.GenerateUUID()
 
-	savedKey, err := s.repository.Save(ctx, key, url)
+	savedKey, err := s.repository.Save(ctx, key, url, userID)
 	if err != nil {
 		if errors.Is(err, repository.ErrConflict) {
 			return savedKey, false, nil
@@ -38,14 +53,13 @@ func (s *Service) Save(ctx context.Context, url string) (string, bool, error) {
 	return savedKey, true, nil
 }
 
-func (s *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq) ([]model.JSONBatchResp, error) {
+func (s *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq, userID string) ([]model.JSONBatchResp, error) {
 	results := make([]model.JSONBatchResp, 0)
 	hasConflict := false
 
 	for _, v := range batch {
 		key := utils.GenerateUUID()
-
-		savedKey, err := s.repository.Save(ctx, key, v.OriginalURL)
+		savedKey, err := s.repository.Save(ctx, key, v.OriginalURL, userID)
 		if errors.Is(err, repository.ErrConflict) {
 			hasConflict = true
 		}
@@ -62,6 +76,15 @@ func (s *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq) ([]
 		return results, repository.ErrConflict
 	}
 	return results, nil
+}
+
+func (s *Service) BatchDelete(ctx context.Context, keys []string, userID string) error {
+	err := s.repository.BatchDelete(ctx, keys, userID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Service) Ping(ctx context.Context) error {

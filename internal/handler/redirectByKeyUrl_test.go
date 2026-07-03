@@ -2,8 +2,8 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,14 +26,18 @@ func TestRedirectByKeyURL(t *testing.T) {
 		panic(e)
 	}
 	defer repo.Close()
-
-	defer utils.GenerateMockUUID()()
-
 	svc := service.NewService(repo)
 
-	ctx := context.Background()
-	svc.Save(ctx, "http://yandex.ru")
-	getURL, _ := svc.Get(ctx, "key_1")
+	ctx := context.WithValue(context.Background(), middleware.UserIDKey, "123")
+
+	savedKey, _, err := svc.Save(ctx, "http://yandex.ru", "123")
+	if err != nil {
+		t.Fatalf("Failed to save URL: %v", err)
+	}
+
+	getURL, _ := svc.Get(ctx, savedKey)
+
+	fmt.Println(getURL)
 
 	type want struct {
 		method   string
@@ -48,7 +52,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 	}{
 		{
 			name:     "case_1 Redirected",
-			endpoint: "/key_1",
+			endpoint: "/" + savedKey,
 			want: want{
 				method:   http.MethodGet,
 				location: getURL,
@@ -57,11 +61,11 @@ func TestRedirectByKeyURL(t *testing.T) {
 		},
 		{
 			name:     "case_2 Method Not Allowed",
-			endpoint: "/key_1",
+			endpoint: "/" + savedKey,
 			want: want{
 				method:   http.MethodPost,
 				code:     http.StatusMethodNotAllowed,
-				response: "Method not allowed",
+				response: "Method not allowed\n",
 			},
 		},
 		{
@@ -69,15 +73,14 @@ func TestRedirectByKeyURL(t *testing.T) {
 			endpoint: "/unknown",
 			want: want{
 				method:   http.MethodGet,
-				code:     http.StatusBadRequest,
-				response: "URL not found",
+				code:     http.StatusNotFound,
+				response: "URL not found\n",
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			r := httptest.NewRequest(tt.want.method, tt.endpoint, nil)
 			w := httptest.NewRecorder()
 
@@ -85,18 +88,13 @@ func TestRedirectByKeyURL(t *testing.T) {
 			redirectHandler(w, r)
 
 			result := w.Result()
-
-			defer func() {
-				if err := result.Body.Close(); err != nil {
-					slog.Error("Failed to close request body", "error", err)
-				}
-			}()
+			defer result.Body.Close()
 
 			responseBody, _ := io.ReadAll(result.Body)
 			gotBody := strings.TrimSpace(string(responseBody))
 
 			if tt.want.response != "" {
-				assert.Equal(t, tt.want.response, gotBody)
+				assert.Equal(t, strings.TrimSpace(tt.want.response), gotBody)
 			}
 			assert.Equal(t, tt.want.code, result.StatusCode)
 

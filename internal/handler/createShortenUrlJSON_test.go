@@ -2,6 +2,7 @@ package handler
 
 import (
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -33,9 +34,13 @@ func TestCreateShortURLJSON(t *testing.T) {
 
 	svc := service.NewService(repo)
 
-	handler := CreateShortenURLJSON(svc)
-	srv := httptest.NewServer(middleware.GzipCompress(handler))
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), middleware.UserIDKey, "123")
+		r = r.WithContext(ctx)
+		CreateShortenURLJSON(svc)(w, r)
+	})
 
+	srv := httptest.NewServer(middleware.GzipCompress(handler))
 	defer srv.Close()
 
 	config.Envs.BaseURL = srv.URL
@@ -47,10 +52,8 @@ func TestCreateShortURLJSON(t *testing.T) {
 
 	respJSON, err := json.Marshal(model.JSONResp{Result: srv.URL + "/key_1"})
 	require.NoError(t, err)
-
 	respJSON2, err := json.Marshal(model.JSONResp{Result: srv.URL + "/key_2"})
 	require.NoError(t, err)
-
 	respJSON3, err := json.Marshal(model.JSONResp{Result: srv.URL + "/key_3"})
 	require.NoError(t, err)
 
@@ -88,8 +91,9 @@ func TestCreateShortURLJSON(t *testing.T) {
 			},
 		},
 		{
-			name:        "case_2 Unsupported Content-Type",
+			name:        "case_3 Unsupported Content-Type",
 			contentType: "text/plain",
+			body:        "test",
 			want: want{
 				method:      http.MethodPost,
 				code:        http.StatusBadRequest,
@@ -123,23 +127,20 @@ func TestCreateShortURLJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var (
-				resp *http.Response
-				req  *http.Request
-				err  error
-			)
-			var bodyReader io.Reader = strings.NewReader(tt.body)
-
-			if tt.want.method == http.MethodGet {
-				req, err = http.NewRequest(http.MethodGet, srv.URL, nil)
-				require.NoError(t, err)
+			var bodyReader io.Reader
+			if tt.body != "" {
+				bodyReader = strings.NewReader(tt.body)
 			}
-			req, err = http.NewRequest(tt.want.method, srv.URL, bodyReader)
+
+			req, err := http.NewRequest(tt.want.method, srv.URL, bodyReader)
 			require.NoError(t, err)
 
-			req.Header.Set("Content-Type", tt.contentType)
+			if tt.contentType != "" {
+				req.Header.Set("Content-Type", tt.contentType)
+			}
+
 			client := &http.Client{}
-			resp, err = client.Do(req)
+			resp, err := client.Do(req)
 			require.NoError(t, err)
 
 			defer func() {

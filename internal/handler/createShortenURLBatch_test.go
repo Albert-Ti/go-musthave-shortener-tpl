@@ -3,6 +3,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository/mocks"
@@ -44,11 +46,11 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://example.com/1").
+					Save(gomock.Any(), gomock.Any(), "https://example.com/1", "123").
 					Return("key_1", nil).
 					Times(1)
 				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://example.com/2").
+					Save(gomock.Any(), gomock.Any(), "https://example.com/2", "123").
 					Return("key_2", nil).
 					Times(1)
 			},
@@ -67,7 +69,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://google.com").
+					Save(gomock.Any(), gomock.Any(), "https://google.com", "123").
 					Return("", errors.New("database error")).
 					Times(1)
 			},
@@ -84,12 +86,12 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://google.com").
+					Save(gomock.Any(), gomock.Any(), "https://google.com", "123").
 					Return("key_1", nil).
 					Times(1)
 
 				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://google.com").
+					Save(gomock.Any(), gomock.Any(), "https://google.com", "123").
 					Return("key_1", repository.ErrConflict).
 					Times(1)
 			},
@@ -124,7 +126,8 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			body:        []model.JSONBatchReq{},
 			setupMock: func(mock *mocks.MockRepository) {
 				// Никаких вызовов не должно быть
-				mock.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+				mock.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any(), "123").
+					Times(0)
 			},
 			statusCode: http.StatusNoContent,
 			response:   nil,
@@ -139,11 +142,11 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://new.com").
+					Save(gomock.Any(), gomock.Any(), "https://new.com", "123").
 					Return("key_1", nil).
 					Times(1)
 				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://existing.com").
+					Save(gomock.Any(), gomock.Any(), "https://existing.com", "123").
 					Return("key_existing", repository.ErrConflict).
 					Times(1)
 			},
@@ -171,7 +174,13 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			bodyBytes, err := json.Marshal(tt.body)
 			require.NoError(t, err)
 
-			req := httptest.NewRequest(tt.method, "/api/shorten/batch", bytes.NewReader(bodyBytes))
+			req := httptest.NewRequestWithContext(
+				context.WithValue(context.Background(),
+					middleware.UserIDKey, "123"),
+				tt.method,
+				"/api/shorten/batch",
+				bytes.NewReader(bodyBytes),
+			)
 			req.Header.Set("Content-Type", tt.contentType)
 
 			rr := httptest.NewRecorder()
