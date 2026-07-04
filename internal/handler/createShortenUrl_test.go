@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
@@ -34,7 +35,7 @@ func TestCreateShortURL(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), middleware.UserIDKey, "123")
 		r = r.WithContext(ctx)
-		CreateShortenURL(svc)(w, r)
+		CreateShortenURL(svc, &audit.Auditor{})(w, r)
 	})
 	srv := httptest.NewServer(handler)
 

@@ -22,10 +22,10 @@ func main() {
 		panic(err)
 	}
 
-	repo, e := repository.NewRepository()
+	repo, err := repository.NewRepository()
 
-	if e != nil {
-		panic(e)
+	if err != nil {
+		panic(err)
 	}
 	defer repo.Close()
 
@@ -39,14 +39,14 @@ func main() {
 	r.Use(myMiddleware.GzipCompress)
 	r.Use(myMiddleware.AuthGuard)
 
-	auditor, e := audit.NewAuditor()
-	if e != nil {
-		panic(e)
+	auditor, err := audit.NewAuditor()
+	if err != nil {
+		panic(err)
 	}
 
-	r.Post("/", auditor.Observer(handler.CreateShortenURL(svc)))
-	r.Get("/{id}", auditor.Observer(handler.RedirectByKeyURL(svc)))
-	r.Post("/api/shorten", auditor.Observer(handler.CreateShortenURLJSON(svc)))
+	r.Post("/", handler.CreateShortenURL(svc, auditor))
+	r.Get("/{id}", handler.RedirectByKeyURL(svc, auditor))
+	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc, auditor))
 
 	r.Get("/ping", handler.PingDatabase(svc))
 	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(svc))
@@ -55,10 +55,10 @@ func main() {
 
 	slog.Info("Running server", "host", config.Envs.RunAddr)
 
-	err := http.ListenAndServe(config.Envs.RunAddr, r)
+	errRun := http.ListenAndServe(config.Envs.RunAddr, r)
 
-	if err != nil {
-		panic(err)
+	if errRun != nil {
+		panic(errRun)
 	}
 }
 

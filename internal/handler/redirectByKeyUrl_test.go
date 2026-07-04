@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
@@ -84,7 +85,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 			r := httptest.NewRequest(tt.want.method, tt.endpoint, nil)
 			w := httptest.NewRecorder()
 
-			redirectHandler := RedirectByKeyURL(svc)
+			redirectHandler := RedirectByKeyURL(svc, &audit.Auditor{})
 			redirectHandler(w, r)
 
 			result := w.Result()

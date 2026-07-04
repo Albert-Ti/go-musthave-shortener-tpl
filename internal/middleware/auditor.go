@@ -1,4 +1,4 @@
-package audit
+package middleware
 
 import (
 	"bytes"
@@ -6,13 +6,10 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 )
-
-func IsDisabled() bool {
-	return config.Envs.AuditFile == "" && config.Envs.AuditURL == ""
-}
 
 type AuditLog struct {
 	Ts     int64  `json:"ts"`
@@ -27,18 +24,14 @@ type Subscriber interface {
 
 type Auditor struct {
 	Ch          chan AuditLog
-	Action      map[string]string
-	Subscribers []Subscriber
+	action      map[string]string
+	subscribers []Subscriber
 }
 
 func NewAuditor() (*Auditor, error) {
-	if IsDisabled() {
-		return nil, nil
-	}
-
 	auditor := &Auditor{
 		Ch:     make(chan AuditLog, 20),
-		Action: map[string]string{http.MethodGet: "follow", http.MethodPost: "shorten"},
+		action: map[string]string{http.MethodGet: "follow", http.MethodPost: "shorten"},
 	}
 
 	if config.Envs.AuditFile != "" {
@@ -59,12 +52,12 @@ func NewAuditor() (*Auditor, error) {
 }
 
 func (a *Auditor) Subscribe(sub Subscriber) {
-	a.Subscribers = append(a.Subscribers, sub)
+	a.subscribers = append(a.subscribers, sub)
 }
 
 func (a *Auditor) Broadcast() {
 	for log := range a.Ch {
-		for _, sub := range a.Subscribers {
+		for _, sub := range a.subscribers {
 			sub.Notify(log)
 		}
 	}
@@ -110,5 +103,34 @@ func (h *HTTPObserver) Notify(log AuditLog) {
 
 	if _, err := http.Post(h.url, "application/json", bytes.NewReader(b)); err != nil {
 		slog.Error("HTTPObserver", "post", err)
+	}
+}
+
+func (a *Auditor) Observer(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		if config.Envs.AuditFile == "" && config.Envs.AuditURL == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		ctx := r.Context()
+		userID, err := GetAuthUserID(ctx)
+
+		if err != nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		auditLog := AuditLog{
+			Ts:     time.Now().Unix(),
+			Action: a.action[r.Method],
+			UserID: userID,
+			URL:    config.Envs.BaseURL + r.RequestURI,
+		}
+
+		a.Add(auditLog)
+
+		next.ServeHTTP(w, r)
 	}
 }
