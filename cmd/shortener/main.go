@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
 	myMiddleware "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
@@ -11,10 +12,15 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	chiMiddleware "github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-migrate/migrate/v4"
 )
 
 func main() {
 	config.ParseFlag()
+
+	if err := runMigrations(config.Envs.DatabaseDSN); err != nil {
+		panic(err)
+	}
 
 	repo, e := repository.NewRepository()
 
@@ -33,10 +39,16 @@ func main() {
 	r.Use(myMiddleware.GzipCompress)
 	r.Use(myMiddleware.AuthGuard)
 
-	r.Post("/", handler.CreateShortenURL(svc))
-	r.Get("/{id}", handler.RedirectByKeyURL(svc))
+	auditor, e := audit.NewAuditor()
+	if e != nil {
+		panic(e)
+	}
+
+	r.Post("/", auditor.Observer(handler.CreateShortenURL(svc)))
+	r.Get("/{id}", auditor.Observer(handler.RedirectByKeyURL(svc)))
+	r.Post("/api/shorten", auditor.Observer(handler.CreateShortenURLJSON(svc)))
+
 	r.Get("/ping", handler.PingDatabase(svc))
-	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc))
 	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(svc))
 	r.Get("/api/user/urls", handler.GetShortenURLs(svc))
 	r.Delete("/api/user/urls", handler.DeleteShortenURLs(svc))
@@ -48,4 +60,23 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func runMigrations(dsn string) error {
+	m, err := migrate.New("file://migrations", dsn)
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+
+	err = m.Up()
+	switch err {
+	case nil:
+		slog.Info("Migrations applied successfully")
+	case migrate.ErrNoChange:
+		slog.Info("Database schema is up-to-date")
+	default:
+		return err
+	}
+	return nil
 }

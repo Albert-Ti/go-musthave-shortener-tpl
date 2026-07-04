@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
-	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres" // ← для работы с PostgreSQL
 	_ "github.com/golang-migrate/migrate/v4/source/file"       // ← для чтения файлов
 )
@@ -19,27 +18,10 @@ type Repository interface {
 	Close() error
 }
 
+// pattern Factory
 func NewRepository() (Repository, error) {
 	if config.Envs.DatabaseDSN != "" {
 		slog.Info("Using database storage")
-
-		m, err := migrate.New("file://migrations", config.Envs.DatabaseDSN)
-		if err != nil {
-			return nil, err
-		}
-		defer m.Close()
-
-		err = m.Up()
-		switch err {
-		case nil:
-			slog.Info("Migrations have been successfully applied")
-		case migrate.ErrNoChange:
-			slog.Info("The database schema is up-to-date and no migrations are required")
-		default:
-			slog.Error("Migrations failed", "error", err)
-			return nil, err
-		}
-
 		return NewPostgresStorage(config.Envs.DatabaseDSN)
 	}
 
