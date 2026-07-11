@@ -16,55 +16,44 @@ import (
 )
 
 func main() {
-	config.ParseFlag()
+	cfg := config.Build()
+	repo, err := repository.NewRepository(cfg)
 
-	if err := runMigrations(config.Envs.DatabaseDSN); err != nil {
+	if err := runMigrations(cfg.DatabaseDSN); err != nil {
 		panic(err)
 	}
-
-	repo, err := repository.NewRepository()
 
 	if err != nil {
 		panic(err)
 	}
 	defer repo.Close()
 
-	svc := service.NewService(repo)
-
+	svc := service.NewService(repo, cfg)
 	r := chi.NewRouter()
 
 	r.Use(chiMiddleware.RealIP)
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(myMiddleware.WithLogging)
 	r.Use(myMiddleware.GzipCompress)
-	r.Use(myMiddleware.AuthGuard)
+	r.Use(myMiddleware.AuthGuard(cfg.JWTSecretKey))
 
-	var auditor *audit.Auditor
+	auditor, err := audit.NewAuditor(cfg.AuditFile, cfg.AuditURL)
 
-	if !config.IsAuditorDisabled() {
-		a, err := audit.NewAuditor(config.Envs.AuditFile, config.Envs.AuditURL)
-		auditor = a
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	r.Post("/", handler.CreateShortenURL(svc, auditor))
-	r.Get("/{id}", handler.RedirectByKeyURL(svc, auditor))
-	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc, auditor))
+	r.Post("/", handler.CreateShortenURL(svc, auditor, cfg.BaseURL))
+	r.Get("/{id}", handler.RedirectByKeyURL(svc, auditor, cfg.BaseURL))
+	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc, auditor, cfg.BaseURL))
 
 	r.Get("/ping", handler.PingDatabase(svc))
 	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(svc))
 	r.Get("/api/user/urls", handler.GetShortenURLs(svc))
 	r.Delete("/api/user/urls", handler.DeleteShortenURLs(svc))
 
-	slog.Info("Running server", "host", config.Envs.RunAddr)
-
-	errRun := http.ListenAndServe(config.Envs.RunAddr, r)
+	errRun := http.ListenAndServe(cfg.RunAddr, r)
 
 	if errRun != nil {
 		panic(errRun)
 	}
+	slog.Info("Running server", "host", cfg.RunAddr)
 }
 
 func runMigrations(dsn string) error {

@@ -19,7 +19,11 @@ const savedKey = "abc123"
 
 func TestRedirectByKeyURL(t *testing.T) {
 	tmpDir := t.TempDir()
-	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
+
+	cfg := config.NewOptions(
+		config.WithFileStoragePath(filepath.Join(tmpDir, "test.json")),
+		config.WithBaseURL("http://localhost:8080"),
+	)
 
 	type want struct {
 		method   string
@@ -91,12 +95,13 @@ func TestRedirectByKeyURL(t *testing.T) {
 			if tt.setupMock != nil {
 				tt.setupMock(mockRepo)
 			}
-			svc := service.NewService(mockRepo)
+			svc := service.NewService(mockRepo, cfg)
 
 			r := httptest.NewRequest(tt.want.method, tt.endpoint, nil)
 			w := httptest.NewRecorder()
+			auditor, _ := audit.NewAuditor("", "")
 
-			redirectHandler := RedirectByKeyURL(svc, &audit.Auditor{})
+			redirectHandler := RedirectByKeyURL(svc, auditor, cfg.BaseURL)
 			redirectHandler(w, r)
 
 			result := w.Result()

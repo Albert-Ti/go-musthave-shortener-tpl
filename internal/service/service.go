@@ -12,10 +12,11 @@ import (
 
 type Service struct {
 	repository repository.Repository
+	cfg        *config.Options
 }
 
-func NewService(repo repository.Repository) *Service {
-	return &Service{repository: repo}
+func NewService(repo repository.Repository, cfg *config.Options) *Service {
+	return &Service{repo, cfg}
 }
 
 func (s *Service) Get(ctx context.Context, key string) (string, error) {
@@ -31,7 +32,7 @@ func (s *Service) GetAll(ctx context.Context, userID string) ([]model.JSONGetAll
 
 	for i := range urls {
 		results = append(results, model.JSONGetAllResp{
-			ShortURL:    config.Envs.BaseURL + "/" + urls[i]["key"],
+			ShortURL:    s.cfg.BaseURL + "/" + urls[i]["key"],
 			OriginalURL: urls[i]["url"],
 		})
 	}
@@ -69,7 +70,7 @@ func (s *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq, use
 
 		results = append(results, model.JSONBatchResp{
 			CorrelationID: v.CorrelationID,
-			ShortURL:      config.Envs.BaseURL + "/" + savedKey,
+			ShortURL:      s.cfg.BaseURL + "/" + savedKey,
 		})
 	}
 	if hasConflict {

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 )
 
 type AuditLog struct {
@@ -15,55 +16,67 @@ type AuditLog struct {
 	URL    string `json:"url"`
 }
 
-type Subscriber interface {
+type subscriber interface {
 	Notify(log AuditLog)
 }
 
 type Auditor struct {
-	Ch          chan AuditLog
-	Action      map[string]string
-	Subscribers []Subscriber
+	ch          chan AuditLog
+	action      map[string]string
+	subscribers []subscriber
+	Disabled    bool
 }
 
 func NewAuditor(auditFile string, auditURL string) (*Auditor, error) {
-	slog.Info("Using Auditor")
+	if auditFile == "" && auditURL == "" {
+		return nil, nil
+	}
 
 	auditor := &Auditor{
-		Ch:     make(chan AuditLog, 20),
-		Action: map[string]string{http.MethodGet: "follow", http.MethodPost: "shorten"},
+		ch:     make(chan AuditLog, 20),
+		action: map[string]string{http.MethodGet: "follow", http.MethodPost: "shorten"},
 	}
+
+	slog.Info("Using Auditor")
 
 	if auditFile != "" {
 		fileObs, err := NewFileObserver(auditFile)
 		if err != nil {
 			return nil, err
 		}
-		auditor.Subscribe(fileObs)
+		auditor.subscribe(fileObs)
 	}
 
 	if auditURL != "" {
-		auditor.Subscribe(NewHTTPObserver(auditURL))
+		auditor.subscribe(NewHTTPObserver(auditURL))
 	}
 
-	go auditor.Broadcast()
+	go auditor.broadcast()
 
 	return auditor, nil
 }
 
-func (a *Auditor) Subscribe(sub Subscriber) {
-	a.Subscribers = append(a.Subscribers, sub)
+func (a *Auditor) subscribe(sub subscriber) {
+	a.subscribers = append(a.subscribers, sub)
 }
 
-func (a *Auditor) Broadcast() {
-	for log := range a.Ch {
-		for _, sub := range a.Subscribers {
+func (a *Auditor) broadcast() {
+	for log := range a.ch {
+		for _, sub := range a.subscribers {
 			sub.Notify(log)
 		}
 	}
 }
 
-func (a *Auditor) Add(log AuditLog) {
-	a.Ch <- log
+func (a *Auditor) AddLog(method, requestURI, userID, baseURL string) {
+	log := AuditLog{
+		Ts:     time.Now().Unix(),
+		Action: a.action[method],
+		UserID: userID,
+		URL:    baseURL + requestURI,
+	}
+
+	a.ch <- log
 }
 
 type FileObserver struct {

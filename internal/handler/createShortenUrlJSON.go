@@ -4,17 +4,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/validator"
 )
 
-func CreateShortenURLJSON(svc *service.Service, auditor *audit.Auditor) http.HandlerFunc {
+func CreateShortenURLJSON(svc *service.Service, auditor *audit.Auditor, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -49,7 +47,7 @@ func CreateShortenURLJSON(svc *service.Service, auditor *audit.Auditor) http.Han
 			return
 		}
 
-		fullURL := config.Envs.BaseURL + "/" + keyURL
+		fullURL := baseURL + "/" + keyURL
 		resp := model.JSONResp{Result: fullURL}
 
 		w.Header().Set("Content-type", "application/json")
@@ -62,13 +60,8 @@ func CreateShortenURLJSON(svc *service.Service, auditor *audit.Auditor) http.Han
 
 		json.NewEncoder(w).Encode(resp)
 
-		if !config.IsAuditorDisabled() {
-			auditor.Add(audit.AuditLog{
-				Ts:     time.Now().Unix(),
-				Action: auditor.Action[r.Method],
-				UserID: userID,
-				URL:    config.Envs.BaseURL + r.RequestURI,
-			})
+		if auditor != nil {
+			auditor.AddLog(r.Method, r.RequestURI, userID, baseURL)
 		}
 	}
 }

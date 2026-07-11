@@ -17,7 +17,10 @@ import (
 
 func TestGetShortenURLs(t *testing.T) {
 	tmpDir := t.TempDir()
-	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
+
+	cfg := config.NewOptions(
+		config.WithFileStoragePath(filepath.Join(tmpDir, "test.json")),
+	)
 
 	tests := []struct {
 		name        string
@@ -78,7 +81,7 @@ func TestGetShortenURLs(t *testing.T) {
 				tt.setupMock(mockRepo)
 			}
 
-			svc := service.NewService(mockRepo)
+			svc := service.NewService(mockRepo, cfg)
 
 			ctx := context.WithValue(
 				context.Background(),

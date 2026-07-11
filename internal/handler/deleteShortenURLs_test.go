@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository/mocks"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
@@ -16,6 +17,8 @@ import (
 )
 
 func TestDeleteShortenURLs(t *testing.T) {
+	cfg := config.NewOptions()
+
 	tests := []struct {
 		name       string
 		method     string
@@ -67,7 +70,7 @@ func TestDeleteShortenURLs(t *testing.T) {
 				tt.setupMock(mockRepo)
 			}
 
-			svc := service.NewService(mockRepo)
+			svc := service.NewService(mockRepo, cfg)
 
 			var bodyBytes []byte
 

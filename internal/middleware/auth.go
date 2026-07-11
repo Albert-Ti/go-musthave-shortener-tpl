@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -19,7 +18,7 @@ type MyCustomClaims struct {
 	UserID string
 }
 
-func createToken(userID string) (string, error) {
+func createToken(userID string, secretKey string) (string, error) {
 	t := jwt.New(jwt.SigningMethodHS256)
 
 	t.Claims = &MyCustomClaims{
@@ -29,7 +28,7 @@ func createToken(userID string) (string, error) {
 		userID,
 	}
 
-	return t.SignedString([]byte(config.Envs.JWTSecretKey))
+	return t.SignedString([]byte(secretKey))
 }
 
 func createCookie(name string, value string) *http.Cookie {
@@ -40,45 +39,47 @@ func createCookie(name string, value string) *http.Cookie {
 	}
 }
 
-func AuthGuard(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("token")
-		var authorizedUserID string
+func AuthGuard(secretKey string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			cookie, err := r.Cookie("token")
+			var authorizedUserID string
 
-		if err != nil {
-			slog.Error("cookie error", "error", err)
-			authorizedUserID = utils.GenerateUUID()
-
-			tokenString, err := createToken(authorizedUserID)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
+				slog.Error("cookie error", "error", err)
+				authorizedUserID = utils.GenerateUUID()
+
+				tokenString, err := createToken(authorizedUserID, secretKey)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				cookie := createCookie("token", tokenString)
+				http.SetCookie(w, cookie)
+			} else {
+				claims := &MyCustomClaims{}
+
+				token, err := jwt.ParseWithClaims(
+					cookie.Value,
+					claims,
+					func(t *jwt.Token) (any, error) {
+						return []byte(secretKey), nil
+					},
+				)
+
+				if err != nil || !token.Valid || claims.UserID == "" {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+
+				authorizedUserID = claims.UserID
 			}
 
-			cookie := createCookie("token", tokenString)
-			http.SetCookie(w, cookie)
-		} else {
-			claims := &MyCustomClaims{}
-
-			token, err := jwt.ParseWithClaims(
-				cookie.Value,
-				claims,
-				func(t *jwt.Token) (any, error) {
-					return []byte(config.Envs.JWTSecretKey), nil
-				},
-			)
-
-			if err != nil || !token.Valid || claims.UserID == "" {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-
-			authorizedUserID = claims.UserID
-		}
-
-		ctx := context.WithValue(r.Context(), UserIDKey, authorizedUserID)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+			ctx := context.WithValue(r.Context(), UserIDKey, authorizedUserID)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }
 
 func GetAuthUserID(ctx context.Context) (string, error) {

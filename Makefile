@@ -10,10 +10,10 @@ run-file:
 	go run cmd/shortener/main.go -f="file_storage.json"
 
 run-pg:
-	go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(audit-file)" --audit-url="$(audit-url)"
+	go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable"
 
 run-pg-audit-file:
-	go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json" --audit-url=""
+	go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json"
 
 ping:
 	curl http://localhost:8080/ping -i

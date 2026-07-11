@@ -19,15 +19,15 @@ type Repository interface {
 }
 
 // pattern Factory
-func NewRepository() (Repository, error) {
-	if config.Envs.DatabaseDSN != "" {
+func NewRepository(cfg *config.Options) (Repository, error) {
+	if cfg.DatabaseDSN != "" {
 		slog.Info("Using database storage")
-		return NewPostgresStorage(config.Envs.DatabaseDSN)
+		return NewPostgresStorage(cfg.DatabaseDSN)
 	}
 
-	if config.Envs.FileStoragePath != "" {
-		slog.Debug("Using file storage", "filePath", config.Envs.FileStoragePath)
-		return NewFileStorage(config.Envs.FileStoragePath)
+	if cfg.FileStoragePath != "" {
+		slog.Debug("Using file storage", "filePath", cfg.FileStoragePath)
+		return NewFileStorage(cfg.FileStoragePath)
 	}
 
 	slog.Debug("Using memory storage")

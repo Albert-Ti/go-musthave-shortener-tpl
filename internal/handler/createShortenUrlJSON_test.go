@@ -25,26 +25,28 @@ import (
 
 func TestCreateShortURLJSON(t *testing.T) {
 	tmpDir := t.TempDir()
-	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
-
-	repo, e := repository.NewRepository()
+	cfg := config.NewOptions(
+		config.WithFileStoragePath(filepath.Join(tmpDir, "test.json")),
+	)
+	repo, e := repository.NewRepository(cfg)
 	if e != nil {
 		panic(e)
 	}
 	defer repo.Close()
 
-	svc := service.NewService(repo)
+	svc := service.NewService(repo, cfg)
+	auditor, _ := audit.NewAuditor("", "")
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), middleware.UserIDKey, "123")
 		r = r.WithContext(ctx)
-		CreateShortenURLJSON(svc, &audit.Auditor{})(w, r)
+		CreateShortenURLJSON(svc, auditor, cfg.BaseURL)(w, r)
 	})
 
 	srv := httptest.NewServer(middleware.GzipCompress(handler))
 	defer srv.Close()
 
-	config.Envs.BaseURL = srv.URL
+	cfg.BaseURL = srv.URL
 
 	defer utils.GenerateMockUUID()()
 

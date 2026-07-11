@@ -5,8 +5,6 @@ import (
 	"os"
 )
 
-var Envs Options
-
 type Options struct {
 	RunAddr         string
 	BaseURL         string
@@ -17,42 +15,7 @@ type Options struct {
 	AuditURL        string
 }
 
-func WithRunAddr(v string) func(*Options) {
-	return func(o *Options) {
-		o.RunAddr = v
-	}
-}
-func WithBaseURL(v string) func(*Options) {
-	return func(o *Options) {
-		o.BaseURL = v
-	}
-}
-func WithFileStoragePath(v string) func(*Options) {
-	return func(o *Options) {
-		o.FileStoragePath = v
-	}
-}
-func WithDatabaseDSN(v string) func(*Options) {
-	return func(o *Options) {
-		o.DatabaseDSN = v
-	}
-}
-func WithJWTSecretKey(v string) func(*Options) {
-	return func(o *Options) {
-		o.JWTSecretKey = v
-	}
-}
-func WithAuditFile(v string) func(*Options) {
-	return func(o *Options) {
-		o.AuditFile = v
-	}
-}
-func WithAuditURL(v string) func(*Options) {
-	return func(o *Options) {
-		o.AuditURL = v
-	}
-}
-
+// pattern Builder
 func NewOptions(opts ...func(*Options)) *Options {
 	o := &Options{
 		RunAddr:      "localhost:8080",
@@ -66,7 +29,15 @@ func NewOptions(opts ...func(*Options)) *Options {
 	return o
 }
 
-func ParseFlag() {
+func WithRunAddr(v string) func(*Options)         { return func(o *Options) { o.RunAddr = v } }
+func WithBaseURL(v string) func(*Options)         { return func(o *Options) { o.BaseURL = v } }
+func WithFileStoragePath(v string) func(*Options) { return func(o *Options) { o.FileStoragePath = v } }
+func WithDatabaseDSN(v string) func(*Options)     { return func(o *Options) { o.DatabaseDSN = v } }
+func WithJWTSecretKey(v string) func(*Options)    { return func(o *Options) { o.JWTSecretKey = v } }
+func WithAuditFile(v string) func(*Options)       { return func(o *Options) { o.AuditFile = v } }
+func WithAuditURL(v string) func(*Options)        { return func(o *Options) { o.AuditURL = v } }
+
+func Build() *Options {
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	var raw Options
 	fs.StringVar(&raw.RunAddr, "a", "localhost:8080", "address and port to run server")
@@ -93,7 +64,7 @@ func ParseFlag() {
 		return flagVal
 	}
 
-	opt := NewOptions(
+	return NewOptions(
 		WithRunAddr(pick("a", raw.RunAddr, "SERVER_ADDRESS")),
 		WithBaseURL(pick("b", raw.BaseURL, "BASE_URL")),
 		WithFileStoragePath(pick("f", raw.FileStoragePath, "FILE_STORAGE_PATH")),
@@ -102,9 +73,8 @@ func ParseFlag() {
 		WithAuditURL(pick("audit-url", raw.AuditURL, "AUDIT_URL")),
 	)
 
-	Envs = *opt
 }
 
-func IsAuditorDisabled() bool {
-	return Envs.AuditFile == "" && Envs.AuditURL == ""
+func (o *Options) IsAuditorDisabled() bool {
+	return o.AuditFile == "" && o.AuditURL == ""
 }

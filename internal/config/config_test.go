@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"flag"
 	"os"
 	"testing"
 
@@ -9,10 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseFlag(t *testing.T) {
+func TestBuild(t *testing.T) {
 	type want struct {
-		runAddr string
-		baseUrl string
+		runAddr  string
+		baseURL  string
+		filePath string
+		dsn      string
 	}
 
 	tests := []struct {
@@ -22,7 +23,7 @@ func TestParseFlag(t *testing.T) {
 		want want
 	}{
 		{
-			name: "case_1 add env",
+			name: "env only",
 			args: []string{"test"},
 			env: map[string]string{
 				"SERVER_ADDRESS": "localhost:8888",
@@ -30,41 +31,65 @@ func TestParseFlag(t *testing.T) {
 			},
 			want: want{
 				runAddr: "localhost:8888",
-				baseUrl: "http://localhost:8888",
+				baseURL: "http://localhost:8888",
 			},
 		},
 		{
-			name: "case_2 add flag",
+			name: "flag only",
 			args: []string{"test", "-a=localhost:9090", "-b=http://localhost:9090"},
-			env:  map[string]string{},
 			want: want{
 				runAddr: "localhost:9090",
-				baseUrl: "http://localhost:9090",
+				baseURL: "http://localhost:9090",
 			},
 		},
 		{
-			name: "case_2 default",
+			name: "defaults, nothing set",
 			args: []string{"test"},
-			env:  map[string]string{},
 			want: want{
 				runAddr: "localhost:8080",
-				baseUrl: "http://localhost:8080",
+				baseURL: "http://localhost:8080",
+			},
+		},
+		{
+			name: "explicit flag wins over env for the same field",
+			args: []string{"test", "-a=localhost:9090"},
+			env: map[string]string{
+				"SERVER_ADDRESS": "localhost:8888",
+			},
+			want: want{
+				runAddr: "localhost:9090",
+				baseURL: "http://localhost:8080",
+			},
+		},
+		{
+			name: "DATABASE_CONN_STRING from env is used when -f is not passed",
+			args: []string{"test"},
+			env: map[string]string{
+				"DATABASE_CONN_STRING": "postgres://localhost/db",
+			},
+			want: want{
+				dsn: "postgres://localhost/db",
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-
 			for k, v := range tt.env {
 				t.Setenv(k, v)
 			}
 			os.Args = tt.args
 
-			config.ParseFlag()
+			cfg := config.Build()
 
-			assert.Equal(t, tt.want.runAddr, config.Envs.RunAddr)
-			assert.Equal(t, tt.want.baseUrl, config.Envs.BaseURL)
+			if tt.want.runAddr != "" {
+				assert.Equal(t, tt.want.runAddr, cfg.RunAddr)
+			}
+			if tt.want.baseURL != "" {
+				assert.Equal(t, tt.want.baseURL, cfg.BaseURL)
+			}
+			assert.Equal(t, tt.want.filePath, cfg.FileStoragePath)
+			assert.Equal(t, tt.want.dsn, cfg.DatabaseDSN)
 		})
 	}
 }

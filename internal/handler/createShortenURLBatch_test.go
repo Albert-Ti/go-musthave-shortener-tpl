@@ -23,7 +23,7 @@ import (
 )
 
 func TestCreateShortenURLBatch(t *testing.T) {
-	config.Envs.BaseURL = "http://localhost:8080"
+	cfg := config.NewOptions(config.WithBaseURL("http://localhost:8080"))
 
 	defer utils.GenerateMockUUID()()
 
@@ -168,7 +168,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 				tt.setupMock(mockRepo)
 			}
 
-			svc := service.NewService(mockRepo)
+			svc := service.NewService(mockRepo, cfg)
 			handler := CreateShortenURLBatch(svc)
 
 			bodyBytes, err := json.Marshal(tt.body)
