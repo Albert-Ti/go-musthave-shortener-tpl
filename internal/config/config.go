@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"log/slog"
 	"os"
 )
 
@@ -49,6 +50,14 @@ func Build() *Options {
 
 	_ = fs.Parse(os.Args[1:])
 
+	slog.Info("config debug",
+		"os.Args", os.Args,
+		"env_FILE_STORAGE_PATH", os.Getenv("FILE_STORAGE_PATH"),
+		"env_DATABASE_CONN_STRING", os.Getenv("DATABASE_CONN_STRING"),
+		"raw_FileStoragePath", raw.FileStoragePath,
+		"raw_DatabaseDSN", raw.DatabaseDSN,
+	)
+
 	explicit := map[string]bool{}
 	fs.Visit(func(f *flag.Flag) {
 		explicit[f.Name] = true
@@ -66,7 +75,7 @@ func Build() *Options {
 
 	dsn := pick("d", raw.DatabaseDSN, "DATABASE_CONN_STRING")
 	if explicit["f"] {
-		dsn = raw.DatabaseDSN
+		dsn = ""
 	}
 
 	return NewOptions(
