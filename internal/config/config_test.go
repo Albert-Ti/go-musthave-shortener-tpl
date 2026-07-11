@@ -73,7 +73,18 @@ func TestBuild(t *testing.T) {
 				baseURL: "http://localhost:8080",
 			},
 		},
-
+		{
+			name: "FILE_STORAGE_PATH env disables leaked DATABASE_CONN_STRING",
+			args: []string{"test"}, // без -f и без -d, как в реальном CI
+			env: map[string]string{
+				"FILE_STORAGE_PATH":    "/tmp/storage.json",
+				"DATABASE_CONN_STRING": "postgres://localhost/db",
+			},
+			want: want{
+				filePath: "/tmp/storage.json",
+				dsn:      "",
+			},
+		},
 		{
 			name: "DATABASE_CONN_STRING from env is used when -f is not passed",
 			args: []string{"test"},

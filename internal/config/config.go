@@ -73,15 +73,18 @@ func Build() *Options {
 		return flagVal
 	}
 
+	filePath := pick("f", raw.FileStoragePath, "FILE_STORAGE_PATH")
+
 	dsn := pick("d", raw.DatabaseDSN, "DATABASE_CONN_STRING")
-	if explicit["f"] {
+
+	if filePath != "" && !explicit["d"] {
 		dsn = ""
 	}
 
 	return NewOptions(
 		WithRunAddr(pick("a", raw.RunAddr, "SERVER_ADDRESS")),
 		WithBaseURL(pick("b", raw.BaseURL, "BASE_URL")),
-		WithFileStoragePath(pick("f", raw.FileStoragePath, "FILE_STORAGE_PATH")),
+		WithFileStoragePath(filePath),
 		WithDatabaseDSN(dsn),
 		WithAuditFile(pick("audit-file", raw.AuditFile, "AUDIT_FILE")),
 		WithAuditURL(pick("audit-url", raw.AuditURL, "AUDIT_URL")),
