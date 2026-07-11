@@ -62,7 +62,7 @@ func CreateShortenURLJSON(svc *service.Service, auditor *audit.Auditor) http.Han
 
 		json.NewEncoder(w).Encode(resp)
 
-		if !audit.IsDisabled() {
+		if !config.IsAuditorDisabled() {
 			auditor.Add(audit.AuditLog{
 				Ts:     time.Now().Unix(),
 				Action: auditor.Action[r.Method],

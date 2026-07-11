@@ -39,9 +39,14 @@ func main() {
 	r.Use(myMiddleware.GzipCompress)
 	r.Use(myMiddleware.AuthGuard)
 
-	auditor, err := audit.NewAuditor()
-	if err != nil {
-		panic(err)
+	var auditor *audit.Auditor
+
+	if !config.IsAuditorDisabled() {
+		a, err := audit.NewAuditor(config.Envs.AuditFile, config.Envs.AuditURL)
+		auditor = a
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	r.Post("/", handler.CreateShortenURL(svc, auditor))

@@ -6,13 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 )
-
-func IsDisabled() bool {
-	return config.Envs.AuditFile == "" && config.Envs.AuditURL == ""
-}
 
 type AuditLog struct {
 	Ts     int64  `json:"ts"`
@@ -31,26 +25,24 @@ type Auditor struct {
 	Subscribers []Subscriber
 }
 
-func NewAuditor() (*Auditor, error) {
-	if IsDisabled() {
-		return nil, nil
-	}
+func NewAuditor(auditFile string, auditURL string) (*Auditor, error) {
+	slog.Info("Using Auditor")
 
 	auditor := &Auditor{
 		Ch:     make(chan AuditLog, 20),
 		Action: map[string]string{http.MethodGet: "follow", http.MethodPost: "shorten"},
 	}
 
-	if config.Envs.AuditFile != "" {
-		fileObs, err := NewFileObserver(config.Envs.AuditFile)
+	if auditFile != "" {
+		fileObs, err := NewFileObserver(auditFile)
 		if err != nil {
 			return nil, err
 		}
 		auditor.Subscribe(fileObs)
 	}
 
-	if config.Envs.AuditURL != "" {
-		auditor.Subscribe(NewHTTPObserver(config.Envs.AuditURL))
+	if auditURL != "" {
+		auditor.Subscribe(NewHTTPObserver(auditURL))
 	}
 
 	go auditor.Broadcast()

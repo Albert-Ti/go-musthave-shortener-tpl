@@ -62,7 +62,7 @@ func CreateShortenURL(svc *service.Service, auditor *audit.Auditor) http.Handler
 
 		w.Write([]byte(fullURL))
 
-		if !audit.IsDisabled() {
+		if !config.IsAuditorDisabled() {
 			auditor.Add(audit.AuditLog{
 				Ts:     time.Now().Unix(),
 				Action: auditor.Action[r.Method],

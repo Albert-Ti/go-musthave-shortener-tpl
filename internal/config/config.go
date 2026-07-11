@@ -22,6 +22,7 @@ func ParseFlag() {
 	flag.StringVar(&Envs.DatabaseDSN, "d", "", "connection string to DB")
 	flag.StringVar(&Envs.AuditFile, "audit-file", "", "путь к файлу-приёмнику")
 	flag.StringVar(&Envs.AuditURL, "audit-url", "", "URL удаленного сервера-приёмника")
+
 	Envs.JWTSecretKey = "secret_key"
 
 	flag.Parse()
@@ -50,4 +51,8 @@ func ParseFlag() {
 	if envAuditURL := os.Getenv("AUDIT_URL"); envAuditURL != "" {
 		Envs.AuditURL = envAuditURL
 	}
+}
+
+func IsAuditorDisabled() bool {
+	return Envs.AuditFile == "" && Envs.AuditURL == ""
 }
