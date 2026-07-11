@@ -24,18 +24,16 @@ func RedirectByKeyURL(svc *service.Service, auditor *audit.Auditor) http.Handler
 
 		ctx := r.Context()
 		url, err := svc.Get(ctx, param)
-		if url == "" {
+		if err != nil {
+			if errors.Is(err, repository.ErrStatusGone) {
+				w.WriteHeader(http.StatusGone)
+				return
+			}
+			if errors.Is(err, repository.ErrNoRows) {
+				http.Error(w, "URL not found", http.StatusNotFound)
+				return
+			}
 			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		if url == "" {
-			http.Error(w, "URL not found", http.StatusNotFound)
-			return
-		}
-
-		if errors.Is(err, repository.ErrStatusGone) {
-			w.WriteHeader(http.StatusGone)
 			return
 		}
 

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -9,6 +10,7 @@ import (
 
 var ErrConflict error = errors.New("URL is already exist")
 var ErrStatusGone error = errors.New("URL deleted")
+var ErrNoRows error = errors.New("URL no rows")
 
 type PostgresStorage struct {
 	pool *pgxpool.Pool
@@ -32,6 +34,9 @@ func (ps *PostgresStorage) Get(ctx context.Context, key string) (string, error) 
 	queryStr := `SELECT url, is_deleted FROM shorten_url WHERE key = $1`
 	err := ps.pool.QueryRow(ctx, queryStr, key).Scan(&url, &isDeleted)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrNoRows
+		}
 		return "", err
 	}
 	if isDeleted {
