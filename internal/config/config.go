@@ -36,7 +36,7 @@ func ParseFlag() {
 	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
 		Envs.FileStoragePath = envFileStoragePath
 	}
-	if envDatabaseDSN := os.Getenv("DATABASE_DSN"); envDatabaseDSN != "" {
+	if envDatabaseDSN := os.Getenv("DATABASE_CONN_STRING"); envDatabaseDSN != "" {
 		Envs.DatabaseDSN = envDatabaseDSN
 	}
 
