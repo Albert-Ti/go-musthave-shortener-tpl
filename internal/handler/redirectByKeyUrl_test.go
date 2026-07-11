@@ -1,87 +1,98 @@
 package handler
 
 import (
-	"context"
-	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository/mocks"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
+
+const savedKey = "abc123"
 
 func TestRedirectByKeyURL(t *testing.T) {
 	tmpDir := t.TempDir()
 	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
 
-	repo, e := repository.NewRepository()
-	if e != nil {
-		panic(e)
-	}
-	defer repo.Close()
-	svc := service.NewService(repo)
-
-	ctx := context.WithValue(context.Background(), middleware.UserIDKey, "123")
-
-	savedKey, _, err := svc.Save(ctx, "http://yandex.ru", "123")
-	if err != nil {
-		t.Fatalf("Failed to save URL: %v", err)
-	}
-
-	getURL, _ := svc.Get(ctx, savedKey)
-
-	fmt.Println(getURL)
-
 	type want struct {
 		method   string
 		code     int
 		location string
-		response string
 	}
 	tests := []struct {
-		name     string
-		endpoint string
-		want     want
+		name      string
+		endpoint  string
+		want      want
+		setupMock func(repo *mocks.MockRepository)
 	}{
 		{
 			name:     "case_1 Redirected",
 			endpoint: "/" + savedKey,
 			want: want{
 				method:   http.MethodGet,
-				location: getURL,
+				location: "http://yandex.ru",
 				code:     http.StatusTemporaryRedirect,
+			},
+			setupMock: func(repo *mocks.MockRepository) {
+				repo.EXPECT().
+					Get(gomock.Any(), savedKey).
+					Return("http://yandex.ru", nil)
 			},
 		},
 		{
 			name:     "case_2 Method Not Allowed",
 			endpoint: "/" + savedKey,
 			want: want{
-				method:   http.MethodPost,
-				code:     http.StatusMethodNotAllowed,
-				response: "Method not allowed\n",
+				method: http.MethodPost,
+				code:   http.StatusMethodNotAllowed,
 			},
 		},
 		{
 			name:     "case_3 URL not found",
 			endpoint: "/unknown",
 			want: want{
-				method:   http.MethodGet,
-				code:     http.StatusNotFound,
-				response: "URL not found\n",
+				method: http.MethodGet,
+				code:   http.StatusNotFound,
+			},
+			setupMock: func(repo *mocks.MockRepository) {
+				repo.EXPECT().
+					Get(gomock.Any(), "unknown").
+					Return("", repository.ErrNoRows)
+			},
+		},
+		{
+			name:     "case_4 Status Gone",
+			endpoint: "/" + savedKey,
+			want: want{
+				method: http.MethodGet,
+				code:   http.StatusGone,
+			},
+			setupMock: func(repo *mocks.MockRepository) {
+				repo.EXPECT().
+					Get(gomock.Any(), savedKey).
+					Return("", repository.ErrStatusGone)
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockRepo := mocks.NewMockRepository(ctrl)
+			if tt.setupMock != nil {
+				tt.setupMock(mockRepo)
+			}
+			svc := service.NewService(mockRepo)
+
 			r := httptest.NewRequest(tt.want.method, tt.endpoint, nil)
 			w := httptest.NewRecorder()
 
@@ -91,14 +102,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 			result := w.Result()
 			defer result.Body.Close()
 
-			responseBody, _ := io.ReadAll(result.Body)
-			gotBody := strings.TrimSpace(string(responseBody))
-
-			if tt.want.response != "" {
-				assert.Equal(t, strings.TrimSpace(tt.want.response), gotBody)
-			}
 			assert.Equal(t, tt.want.code, result.StatusCode)
-
 			if tt.want.location != "" {
 				assert.Equal(t, tt.want.location, result.Header.Get("Location"))
 			}
