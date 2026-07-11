@@ -68,6 +68,9 @@ func main() {
 }
 
 func runMigrations(dsn string) error {
+	if dsn == "" {
+		return nil
+	}
 	m, err := migrate.New("file://migrations", dsn)
 	if err != nil {
 		return err

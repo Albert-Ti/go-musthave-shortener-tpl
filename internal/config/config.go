@@ -5,7 +5,9 @@ import (
 	"os"
 )
 
-var Envs struct {
+var Envs Options
+
+type Options struct {
 	RunAddr         string
 	BaseURL         string
 	FileStoragePath string
@@ -15,42 +17,92 @@ var Envs struct {
 	AuditURL        string
 }
 
+func WithRunAddr(v string) func(*Options) {
+	return func(o *Options) {
+		o.RunAddr = v
+	}
+}
+func WithBaseURL(v string) func(*Options) {
+	return func(o *Options) {
+		o.BaseURL = v
+	}
+}
+func WithFileStoragePath(v string) func(*Options) {
+	return func(o *Options) {
+		o.FileStoragePath = v
+	}
+}
+func WithDatabaseDSN(v string) func(*Options) {
+	return func(o *Options) {
+		o.DatabaseDSN = v
+	}
+}
+func WithJWTSecretKey(v string) func(*Options) {
+	return func(o *Options) {
+		o.JWTSecretKey = v
+	}
+}
+func WithAuditFile(v string) func(*Options) {
+	return func(o *Options) {
+		o.AuditFile = v
+	}
+}
+func WithAuditURL(v string) func(*Options) {
+	return func(o *Options) {
+		o.AuditURL = v
+	}
+}
+
+func NewOptions(opts ...func(*Options)) *Options {
+	o := &Options{
+		RunAddr:      "localhost:8080",
+		BaseURL:      "http://localhost:8080",
+		JWTSecretKey: "jwt_secret_key",
+	}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+	return o
+}
+
 func ParseFlag() {
-	flag.StringVar(&Envs.RunAddr, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&Envs.BaseURL, "b", "http://localhost:8080", "Base URL")
-	flag.StringVar(&Envs.FileStoragePath, "f", "", "file storage")
-	flag.StringVar(&Envs.DatabaseDSN, "d", "", "connection string to DB")
-	flag.StringVar(&Envs.AuditFile, "audit-file", "", "путь к файлу-приёмнику")
-	flag.StringVar(&Envs.AuditURL, "audit-url", "", "URL удаленного сервера-приёмника")
+	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	var raw Options
+	fs.StringVar(&raw.RunAddr, "a", "localhost:8080", "address and port to run server")
+	fs.StringVar(&raw.BaseURL, "b", "http://localhost:8080", "Base URL")
+	fs.StringVar(&raw.FileStoragePath, "f", "", "file storage")
+	fs.StringVar(&raw.DatabaseDSN, "d", "", "connection string to DB")
+	fs.StringVar(&raw.AuditFile, "audit-file", "", "путь к файлу-приёмнику")
+	fs.StringVar(&raw.AuditURL, "audit-url", "", "URL удаленного сервера-приёмника")
 
-	Envs.JWTSecretKey = "secret_key"
+	_ = fs.Parse(os.Args[1:])
 
-	flag.Parse()
+	explicit := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) {
+		explicit[f.Name] = true
+	})
 
-	if envRunAddr := os.Getenv("SERVER_ADDRESS"); envRunAddr != "" {
-		Envs.RunAddr = envRunAddr
-	}
-	if envBaseUrl := os.Getenv("BASE_URL"); envBaseUrl != "" {
-		Envs.BaseURL = envBaseUrl
-	}
-	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
-		Envs.FileStoragePath = envFileStoragePath
-	}
-	if envDatabaseDSN := os.Getenv("DATABASE_CONN_STRING"); envDatabaseDSN != "" {
-		Envs.DatabaseDSN = envDatabaseDSN
-	}
-
-	if envJWTSecretKey := os.Getenv("JWT_SECRET_KEY"); envJWTSecretKey != "" {
-		Envs.JWTSecretKey = envJWTSecretKey
+	pick := func(flagName string, flagVal string, envStr string) string {
+		if explicit[flagName] {
+			return flagVal
+		}
+		if v := os.Getenv(envStr); v != "" {
+			return v
+		}
+		return flagVal
 	}
 
-	if envAuditFile := os.Getenv("AUDIT_FILE"); envAuditFile != "" {
-		Envs.AuditFile = envAuditFile
-	}
+	opt := NewOptions(
+		WithRunAddr(pick("a", raw.RunAddr, "SERVER_ADDRESS")),
+		WithBaseURL(pick("b", raw.BaseURL, "BASE_URL")),
+		WithFileStoragePath(pick("f", raw.FileStoragePath, "FILE_STORAGE_PATH")),
+		WithDatabaseDSN(pick("d", raw.DatabaseDSN, "DATABASE_CONN_STRING")),
+		WithAuditFile(pick("audit-file", raw.AuditFile, "AUDIT_FILE")),
+		WithAuditURL(pick("audit-url", raw.AuditURL, "AUDIT_URL")),
+	)
 
-	if envAuditURL := os.Getenv("AUDIT_URL"); envAuditURL != "" {
-		Envs.AuditURL = envAuditURL
-	}
+	Envs = *opt
 }
 
 func IsAuditorDisabled() bool {
