@@ -16,6 +16,18 @@ func TestBuild(t *testing.T) {
 		dsn      string
 	}
 
+	// все ENV-переменные, которые Build() умеет читать —
+	// нужны, чтобы гарантированно зачищать их между кейсами
+	allEnvKeys := []string{
+		"SERVER_ADDRESS",
+		"BASE_URL",
+		"FILE_STORAGE_PATH",
+		"DATABASE_CONN_STRING",
+		"JWT_SECRET_KEY",
+		"AUDIT_FILE",
+		"AUDIT_URL",
+	}
+
 	tests := []struct {
 		name string
 		args []string
@@ -61,6 +73,7 @@ func TestBuild(t *testing.T) {
 				baseURL: "http://localhost:8080",
 			},
 		},
+
 		{
 			name: "DATABASE_CONN_STRING from env is used when -f is not passed",
 			args: []string{"test"},
@@ -75,9 +88,15 @@ func TestBuild(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			for _, key := range allEnvKeys {
+				t.Setenv(key, "")
+			}
 			for k, v := range tt.env {
 				t.Setenv(k, v)
 			}
+
+			origArgs := os.Args
+			defer func() { os.Args = origArgs }()
 			os.Args = tt.args
 
 			cfg := config.Build()

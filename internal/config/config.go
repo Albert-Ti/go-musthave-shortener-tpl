@@ -72,9 +72,4 @@ func Build() *Options {
 		WithAuditFile(pick("audit-file", raw.AuditFile, "AUDIT_FILE")),
 		WithAuditURL(pick("audit-url", raw.AuditURL, "AUDIT_URL")),
 	)
-
-}
-
-func (o *Options) IsAuditorDisabled() bool {
-	return o.AuditFile == "" && o.AuditURL == ""
 }
