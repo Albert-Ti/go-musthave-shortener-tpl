@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	_ "net/http/pprof"
+
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
@@ -31,29 +33,36 @@ func main() {
 	svc := service.NewService(repo, cfg)
 	r := chi.NewRouter()
 
+	auditor, err := audit.NewAuditor(cfg.AuditFile, cfg.AuditURL)
+	if err != nil {
+		panic(err)
+	}
+
 	r.Use(chiMiddleware.RealIP)
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(myMiddleware.WithLogging)
 	r.Use(myMiddleware.GzipCompress)
 	r.Use(myMiddleware.AuthGuard(cfg.JWTSecretKey))
 
-	auditor, err := audit.NewAuditor(cfg.AuditFile, cfg.AuditURL)
-
 	r.Post("/", handler.CreateShortenURL(svc, auditor, cfg.BaseURL))
 	r.Get("/{id}", handler.RedirectByKeyURL(svc, auditor, cfg.BaseURL))
 	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc, auditor, cfg.BaseURL))
-
-	r.Get("/ping", handler.PingDatabase(svc))
 	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(svc))
 	r.Get("/api/user/urls", handler.GetShortenURLs(svc))
 	r.Delete("/api/user/urls", handler.DeleteShortenURLs(svc))
+	r.Get("/ping", handler.PingDatabase(svc))
 
+	if cfg.Mode == "debug" {
+		slog.Info("Running server pprof", "host", "localhost:6060")
+		go http.ListenAndServe("localhost:6060", nil)
+	}
+
+	slog.Info("Running server", "host", cfg.RunAddr)
 	errRun := http.ListenAndServe(cfg.RunAddr, r)
-
 	if errRun != nil {
 		panic(errRun)
 	}
-	slog.Info("Running server", "host", cfg.RunAddr)
+
 }
 
 func runMigrations(dsn string) error {

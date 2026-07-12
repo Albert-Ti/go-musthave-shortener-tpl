@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"log/slog"
 	"os"
 )
 
@@ -14,6 +13,7 @@ type Options struct {
 	JWTSecretKey    string
 	AuditFile       string
 	AuditURL        string
+	Mode            string
 }
 
 // pattern Builder
@@ -22,6 +22,7 @@ func NewOptions(opts ...func(*Options)) *Options {
 		RunAddr:      "localhost:8080",
 		BaseURL:      "http://localhost:8080",
 		JWTSecretKey: "jwt_secret_key",
+		Mode:         "dev",
 	}
 
 	for _, opt := range opts {
@@ -37,6 +38,7 @@ func WithDatabaseDSN(v string) func(*Options)     { return func(o *Options) { o.
 func WithJWTSecretKey(v string) func(*Options)    { return func(o *Options) { o.JWTSecretKey = v } }
 func WithAuditFile(v string) func(*Options)       { return func(o *Options) { o.AuditFile = v } }
 func WithAuditURL(v string) func(*Options)        { return func(o *Options) { o.AuditURL = v } }
+func WithMode(v string) func(*Options)            { return func(o *Options) { o.Mode = v } }
 
 func Build() *Options {
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -48,15 +50,7 @@ func Build() *Options {
 	fs.StringVar(&raw.AuditFile, "audit-file", "", "путь к файлу-приёмнику")
 	fs.StringVar(&raw.AuditURL, "audit-url", "", "URL удаленного сервера-приёмника")
 
-	_ = fs.Parse(os.Args[1:])
-
-	slog.Info("config debug",
-		"os.Args", os.Args,
-		"env_FILE_STORAGE_PATH", os.Getenv("FILE_STORAGE_PATH"),
-		"env_DATABASE_CONN_STRING", os.Getenv("DATABASE_CONN_STRING"),
-		"raw_FileStoragePath", raw.FileStoragePath,
-		"raw_DatabaseDSN", raw.DatabaseDSN,
-	)
+	fs.Parse(os.Args[1:])
 
 	explicit := map[string]bool{}
 	fs.Visit(func(f *flag.Flag) {
@@ -88,5 +82,6 @@ func Build() *Options {
 		WithDatabaseDSN(dsn),
 		WithAuditFile(pick("audit-file", raw.AuditFile, "AUDIT_FILE")),
 		WithAuditURL(pick("audit-url", raw.AuditURL, "AUDIT_URL")),
+		WithMode(pick("m", raw.Mode, "MODE")),
 	)
 }

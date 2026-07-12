@@ -1,5 +1,6 @@
 DB_URL = postgres://postgres:postgres@localhost:5432/db?sslmode=disable
 MIGRATIONS_PATH = ./migrations
+PPROF_FILE_PATH = profiles/base.pprof
 
 .PHONY: run ping test migrate-up migrate-down migrate-create
 
@@ -10,10 +11,10 @@ run-file:
 	go run cmd/shortener/main.go -f="file_storage.json"
 
 run-pg:
-	go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable"
-
-run-pg-audit-file:
 	go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json"
+
+run-pg-debug:
+	export MODE=debug && go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json"
 
 ping:
 	curl http://localhost:8080/ping -i
@@ -62,3 +63,14 @@ docker-volume-rm:
 
 mockgen:
 	mockgen -source=internal/repository/repository.go -destination=internal/repository/mocks/mock_repository.go -package=mocks 
+
+hey:
+	hey -n 1000 -c 10 http://localhost:8080/
+
+pprof-snapshot:
+	@test -n "$(file_path)" || (echo "Error: file_path is required. Use: make  file_path=profiles/file_path.pprof" && exit 1)
+	curl -s -k -v http://localhost:6060/debug/pprof/heap > "$(file_path)"
+
+pprof-run-web:
+	@test -n "$(file_path)" || (echo "Error: file_path is required. Use: make  file_path=profiles/file_path.pprof" && exit 1)
+	go tool pprof -http=":9090" "$(file_path)"
