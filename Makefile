@@ -74,3 +74,6 @@ pprof-snapshot:
 pprof-run-web:
 	@test -n "$(file_path)" || (echo "Error: file_path is required. Use: make  file_path=profiles/file_path.pprof" && exit 1)
 	go tool pprof -http=":9090" "$(file_path)"
+
+pprof-diff:
+	go tool pprof -top -diff_base=profiles/base.pprof profiles/result.pprof 
