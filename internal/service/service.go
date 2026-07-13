@@ -79,6 +79,12 @@ func (s *Service) BatchSave(ctx context.Context, batch []model.BatchReq, userID 
 	return results, nil
 }
 
+func (s *Service) BatchSave2(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+
+	return s.repository.BatchSave(ctx, batch, userID)
+
+}
+
 func (s *Service) BatchDelete(ctx context.Context, keys []string, userID string) error {
 	err := s.repository.BatchDelete(ctx, keys, userID)
 	if err != nil {

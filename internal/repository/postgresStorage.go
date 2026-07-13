@@ -6,6 +6,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -106,6 +109,42 @@ func (ps *PostgresStorage) Save(ctx context.Context, key string, url string, use
 	}
 
 	return key, nil
+}
+
+func (ps *PostgresStorage) BatchSave(ctx context.Context, items []model.BatchReq, userID string) ([]model.BatchResp, error) {
+	results := make([]model.BatchResp, len(items))
+
+	queryStr := `
+		INSERT INTO shorten_url (key, url, user_id)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (url)
+		DO UPDATE SET url = shorten_url.url
+		RETURNING key
+	`
+	batch := &pgx.Batch{}
+
+	for _, v := range items {
+		key := utils.GenerateUUID()
+		batch.Queue(queryStr, key, v.OriginalURL, userID)
+	}
+
+	br := ps.pool.SendBatch(ctx, batch)
+	defer br.Close()
+
+	for i, v := range items {
+		var returnedKey string
+
+		if err := br.QueryRow().Scan(&returnedKey); err != nil {
+			return nil, err
+		}
+
+		results[i] = model.BatchResp{
+			CorrelationID: v.CorrelationID,
+			ShortURL:      returnedKey,
+		}
+	}
+
+	return results, nil
 }
 
 func (ps *PostgresStorage) BatchDelete(ctx context.Context, keys []string, userID string) error {

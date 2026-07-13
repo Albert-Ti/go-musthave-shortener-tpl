@@ -6,6 +6,8 @@ import (
 	"errors"
 	"io"
 	"os"
+
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 )
 
 type FileStorage struct {
@@ -91,6 +93,9 @@ func (fs *FileStorage) Save(ctx context.Context, key string, url string, userID 
 	}
 
 	return key, nil
+}
+func (fs *FileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+	return nil, nil
 }
 
 func (fs *FileStorage) BatchDelete(ctx context.Context, keys []string, userID string) error {

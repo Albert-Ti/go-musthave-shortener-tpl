@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"errors"
+
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 )
 
 type MemoryStorage struct {
@@ -42,6 +44,10 @@ func (ms *MemoryStorage) Save(ctx context.Context, key string, url string, userI
 	})
 
 	return key, nil
+}
+
+func (ms *MemoryStorage) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+	return nil, nil
 }
 
 func (ms *MemoryStorage) BatchDelete(ctx context.Context, keys []string, userID string) error {
