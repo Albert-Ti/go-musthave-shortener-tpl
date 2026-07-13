@@ -23,15 +23,15 @@ func (s *Service) Get(ctx context.Context, key string) (string, error) {
 	return s.repository.Get(ctx, key)
 }
 
-func (s *Service) GetAll(ctx context.Context, userID string) ([]model.JSONGetAllResp, error) {
+func (s *Service) GetAll(ctx context.Context, userID string) ([]model.GetAllResp, error) {
 	urls, err := s.repository.GetAll(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	results := []model.JSONGetAllResp{}
+	results := []model.GetAllResp{}
 
 	for i := range urls {
-		results = append(results, model.JSONGetAllResp{
+		results = append(results, model.GetAllResp{
 			ShortURL:    s.cfg.BaseURL + "/" + urls[i]["key"],
 			OriginalURL: urls[i]["url"],
 		})
@@ -54,8 +54,8 @@ func (s *Service) Save(ctx context.Context, url string, userID string) (string, 
 	return savedKey, true, nil
 }
 
-func (s *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq, userID string) ([]model.JSONBatchResp, error) {
-	results := make([]model.JSONBatchResp, 0)
+func (s *Service) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+	results := make([]model.BatchResp, 0)
 	hasConflict := false
 
 	for _, v := range batch {
@@ -68,7 +68,7 @@ func (s *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq, use
 			return nil, err
 		}
 
-		results = append(results, model.JSONBatchResp{
+		results = append(results, model.BatchResp{
 			CorrelationID: v.CorrelationID,
 			ShortURL:      s.cfg.BaseURL + "/" + savedKey,
 		})

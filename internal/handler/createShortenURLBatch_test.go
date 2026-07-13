@@ -31,16 +31,16 @@ func TestCreateShortenURLBatch(t *testing.T) {
 		name        string
 		method      string
 		contentType string
-		body        []model.JSONBatchReq
+		body        []model.BatchReq
 		setupMock   func(mock *mocks.MockRepository)
 		statusCode  int
-		response    []model.JSONBatchResp
+		response    []model.BatchResp
 	}{
 		{
 			name:        "Case_1 successful batch save",
 			method:      http.MethodPost,
 			contentType: "application/json",
-			body: []model.JSONBatchReq{
+			body: []model.BatchReq{
 				{CorrelationID: "ID1", OriginalURL: "https://example.com/1"},
 				{CorrelationID: "ID2", OriginalURL: "https://example.com/2"},
 			},
@@ -55,7 +55,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 					Times(1)
 			},
 			statusCode: http.StatusCreated,
-			response: []model.JSONBatchResp{
+			response: []model.BatchResp{
 				{ShortURL: "http://localhost:8080/key_1", CorrelationID: "ID1"},
 				{ShortURL: "http://localhost:8080/key_2", CorrelationID: "ID2"},
 			},
@@ -64,7 +64,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			name:        "Case_2 BatchSave error (database error)",
 			method:      http.MethodPost,
 			contentType: "application/json",
-			body: []model.JSONBatchReq{
+			body: []model.BatchReq{
 				{CorrelationID: "ID1", OriginalURL: "https://google.com"},
 			},
 			setupMock: func(mock *mocks.MockRepository) {
@@ -80,7 +80,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			name:        "Case_3 BatchSave with conflict (duplicate URL)",
 			method:      http.MethodPost,
 			contentType: "application/json",
-			body: []model.JSONBatchReq{
+			body: []model.BatchReq{
 				{CorrelationID: "ID1", OriginalURL: "https://google.com"},
 				{CorrelationID: "ID2", OriginalURL: "https://google.com"},
 			},
@@ -96,7 +96,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 					Times(1)
 			},
 			statusCode: http.StatusConflict,
-			response: []model.JSONBatchResp{
+			response: []model.BatchResp{
 				{ShortURL: "http://localhost:8080/key_1", CorrelationID: "ID1"},
 				{ShortURL: "http://localhost:8080/key_1", CorrelationID: "ID2"},
 			},
@@ -105,7 +105,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			name:        "Case_4 invalid HTTP method",
 			method:      http.MethodGet,
 			contentType: "application/json",
-			body:        []model.JSONBatchReq{},
+			body:        []model.BatchReq{},
 			setupMock:   func(mock *mocks.MockRepository) {},
 			statusCode:  http.StatusMethodNotAllowed,
 			response:    nil,
@@ -114,7 +114,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			name:        "Case_5 invalid content type",
 			method:      http.MethodPost,
 			contentType: "text/plain",
-			body:        []model.JSONBatchReq{},
+			body:        []model.BatchReq{},
 			setupMock:   func(mock *mocks.MockRepository) {},
 			statusCode:  http.StatusBadRequest,
 			response:    nil,
@@ -123,7 +123,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			name:        "Case_6 empty batch",
 			method:      http.MethodPost,
 			contentType: "application/json",
-			body:        []model.JSONBatchReq{},
+			body:        []model.BatchReq{},
 			setupMock: func(mock *mocks.MockRepository) {
 				// Никаких вызовов не должно быть
 				mock.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any(), "123").
@@ -136,7 +136,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			name:        "Case_7 partial conflict (first success, second conflict)",
 			method:      http.MethodPost,
 			contentType: "application/json",
-			body: []model.JSONBatchReq{
+			body: []model.BatchReq{
 				{CorrelationID: "ID1", OriginalURL: "https://new.com"},
 				{CorrelationID: "ID2", OriginalURL: "https://existing.com"},
 			},
@@ -151,7 +151,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 					Times(1)
 			},
 			statusCode: http.StatusConflict,
-			response: []model.JSONBatchResp{
+			response: []model.BatchResp{
 				{ShortURL: "http://localhost:8080/key_1", CorrelationID: "ID1"},
 				{ShortURL: "http://localhost:8080/key_existing", CorrelationID: "ID2"},
 			},
@@ -189,14 +189,14 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			assert.Equal(t, tt.statusCode, rr.Code)
 
 			if tt.response != nil && rr.Code == http.StatusCreated {
-				var resp []model.JSONBatchResp
+				var resp []model.BatchResp
 				err = json.NewDecoder(rr.Body).Decode(&resp)
 				require.NoError(t, err)
 				assert.Equal(t, tt.response, resp)
 			}
 
 			if tt.statusCode == http.StatusConflict && tt.response != nil {
-				var resp []model.JSONBatchResp
+				var resp []model.BatchResp
 				err = json.NewDecoder(rr.Body).Decode(&resp)
 				require.NoError(t, err)
 				assert.Equal(t, tt.response, resp)
