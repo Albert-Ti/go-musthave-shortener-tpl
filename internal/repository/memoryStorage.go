@@ -3,6 +3,9 @@ package repository
 import (
 	"context"
 	"errors"
+
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 )
 
 type MemoryStorage struct {
@@ -42,6 +45,27 @@ func (ms *MemoryStorage) Save(ctx context.Context, key string, url string, userI
 	})
 
 	return key, nil
+}
+
+func (ms *MemoryStorage) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+	result := make([]model.BatchResp, len(batch))
+
+	for i, v := range batch {
+		key := utils.GenerateUUID()
+
+		ms.urls = append(ms.urls, map[string]string{
+			"key":     key,
+			"url":     v.OriginalURL,
+			"user_id": userID,
+		})
+
+		result[i] = model.BatchResp{
+			CorrelationID: v.CorrelationID,
+			ShortURL:      key,
+		}
+	}
+
+	return result, nil
 }
 
 func (ms *MemoryStorage) BatchDelete(ctx context.Context, keys []string, userID string) error {

@@ -54,29 +54,28 @@ func (s *Service) Save(ctx context.Context, url string, userID string) (string, 
 	return savedKey, true, nil
 }
 
+// func (s *Service) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+// 	results := make([]model.BatchResp, len(batch))
+// 	prefix := s.cfg.BaseURL + "/"
+
+// 	for i, v := range batch {
+// 		key := utils.GenerateUUID()
+// 		savedKey, err := s.repository.Save(ctx, key, v.OriginalURL, userID)
+
+// 		if err != nil && !errors.Is(err, repository.ErrConflict) {
+// 			return nil, err
+// 		}
+
+// 		results[i] = model.BatchResp{
+// 			CorrelationID: v.CorrelationID,
+// 			ShortURL:      prefix + savedKey,
+// 		}
+// 	}
+// 	return results, nil
+// }
+
 func (s *Service) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
-	results := make([]model.BatchResp, 0)
-	hasConflict := false
-
-	for _, v := range batch {
-		key := utils.GenerateUUID()
-		savedKey, err := s.repository.Save(ctx, key, v.OriginalURL, userID)
-		if errors.Is(err, repository.ErrConflict) {
-			hasConflict = true
-		}
-		if err != nil && !errors.Is(err, repository.ErrConflict) {
-			return nil, err
-		}
-
-		results = append(results, model.BatchResp{
-			CorrelationID: v.CorrelationID,
-			ShortURL:      s.cfg.BaseURL + "/" + savedKey,
-		})
-	}
-	if hasConflict {
-		return results, repository.ErrConflict
-	}
-	return results, nil
+	return s.repository.BatchSave(ctx, batch, userID)
 }
 
 func (s *Service) BatchDelete(ctx context.Context, keys []string, userID string) error {

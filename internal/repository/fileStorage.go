@@ -6,6 +6,9 @@ import (
 	"errors"
 	"io"
 	"os"
+
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 )
 
 type FileStorage struct {
@@ -91,6 +94,37 @@ func (fs *FileStorage) Save(ctx context.Context, key string, url string, userID 
 	}
 
 	return key, nil
+}
+
+func (fs *FileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+	result := make([]model.BatchResp, len(batch))
+
+	for i, v := range batch {
+		key := utils.GenerateUUID()
+
+		record := &filRecord{
+			Uuid:        len(fs.urls) + 1,
+			ShortURL:    key,
+			OriginalURL: v.OriginalURL,
+		}
+
+		fs.urls = append(fs.urls, map[string]string{
+			"key":     key,
+			"url":     v.OriginalURL,
+			"user_id": userID,
+		})
+
+		if err := fs.encoder.Encode(&record); err != nil {
+			return nil, err
+		}
+
+		result[i] = model.BatchResp{
+			CorrelationID: v.CorrelationID,
+			ShortURL:      key,
+		}
+	}
+
+	return result, nil
 }
 
 func (fs *FileStorage) BatchDelete(ctx context.Context, keys []string, userID string) error {

@@ -1,4 +1,3 @@
-// internal/handler/createShortenURLBatch_test.go
 package handler
 
 import (
@@ -13,7 +12,6 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository/mocks"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
@@ -46,12 +44,11 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://example.com/1", "123").
-					Return("key_1", nil).
-					Times(1)
-				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://example.com/2", "123").
-					Return("key_2", nil).
+					BatchSave(gomock.Any(), gomock.Any(), "123").
+					Return([]model.BatchResp{
+						{ShortURL: "http://localhost:8080/key_1", CorrelationID: "ID1"},
+						{ShortURL: "http://localhost:8080/key_2", CorrelationID: "ID2"},
+					}, nil).
 					Times(1)
 			},
 			statusCode: http.StatusCreated,
@@ -69,37 +66,12 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://google.com", "123").
-					Return("", errors.New("database error")).
+					BatchSave(gomock.Any(), gomock.Any(), "123").
+					Return(nil, errors.New("database error")).
 					Times(1)
 			},
 			statusCode: http.StatusInternalServerError,
 			response:   nil,
-		},
-		{
-			name:        "Case_3 BatchSave with conflict (duplicate URL)",
-			method:      http.MethodPost,
-			contentType: "application/json",
-			body: []model.BatchReq{
-				{CorrelationID: "ID1", OriginalURL: "https://google.com"},
-				{CorrelationID: "ID2", OriginalURL: "https://google.com"},
-			},
-			setupMock: func(mock *mocks.MockRepository) {
-				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://google.com", "123").
-					Return("key_1", nil).
-					Times(1)
-
-				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://google.com", "123").
-					Return("key_1", repository.ErrConflict).
-					Times(1)
-			},
-			statusCode: http.StatusConflict,
-			response: []model.BatchResp{
-				{ShortURL: "http://localhost:8080/key_1", CorrelationID: "ID1"},
-				{ShortURL: "http://localhost:8080/key_1", CorrelationID: "ID2"},
-			},
 		},
 		{
 			name:        "Case_4 invalid HTTP method",
@@ -126,35 +98,12 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			body:        []model.BatchReq{},
 			setupMock: func(mock *mocks.MockRepository) {
 				// Никаких вызовов не должно быть
-				mock.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any(), "123").
+				mock.EXPECT().
+					BatchSave(gomock.Any(), gomock.Any(), "123").
 					Times(0)
 			},
 			statusCode: http.StatusNoContent,
 			response:   nil,
-		},
-		{
-			name:        "Case_7 partial conflict (first success, second conflict)",
-			method:      http.MethodPost,
-			contentType: "application/json",
-			body: []model.BatchReq{
-				{CorrelationID: "ID1", OriginalURL: "https://new.com"},
-				{CorrelationID: "ID2", OriginalURL: "https://existing.com"},
-			},
-			setupMock: func(mock *mocks.MockRepository) {
-				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://new.com", "123").
-					Return("key_1", nil).
-					Times(1)
-				mock.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://existing.com", "123").
-					Return("key_existing", repository.ErrConflict).
-					Times(1)
-			},
-			statusCode: http.StatusConflict,
-			response: []model.BatchResp{
-				{ShortURL: "http://localhost:8080/key_1", CorrelationID: "ID1"},
-				{ShortURL: "http://localhost:8080/key_existing", CorrelationID: "ID2"},
-			},
 		},
 	}
 

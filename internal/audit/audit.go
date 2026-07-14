@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+type observer interface {
+	Notify(log AuditLog)
+}
+
 type AuditLog struct {
 	Ts     int64  `json:"ts"`
 	Action string `json:"action"`
@@ -16,15 +20,11 @@ type AuditLog struct {
 	URL    string `json:"url"`
 }
 
-type subscriber interface {
-	Notify(log AuditLog)
-}
-
 type Auditor struct {
-	ch          chan AuditLog
-	action      map[string]string
-	subscribers []subscriber
-	Disabled    bool
+	ch       chan AuditLog
+	action   map[string]string
+	observer []observer
+	Disabled bool
 }
 
 func NewAuditor(auditFile string, auditURL string) (*Auditor, error) {
@@ -56,18 +56,6 @@ func NewAuditor(auditFile string, auditURL string) (*Auditor, error) {
 	return auditor, nil
 }
 
-func (a *Auditor) subscribe(sub subscriber) {
-	a.subscribers = append(a.subscribers, sub)
-}
-
-func (a *Auditor) broadcast() {
-	for log := range a.ch {
-		for _, sub := range a.subscribers {
-			sub.Notify(log)
-		}
-	}
-}
-
 func (a *Auditor) AddLog(method, requestURI, userID, baseURL string) {
 	log := AuditLog{
 		Ts:     time.Now().Unix(),
@@ -79,13 +67,21 @@ func (a *Auditor) AddLog(method, requestURI, userID, baseURL string) {
 	a.ch <- log
 }
 
+func (a *Auditor) subscribe(sub observer) {
+	a.observer = append(a.observer, sub)
+}
+
+func (a *Auditor) broadcast() {
+	for log := range a.ch {
+		for _, sub := range a.observer {
+			sub.Notify(log)
+		}
+	}
+}
+
 type FileObserver struct {
 	file    *os.File
 	encoder *json.Encoder
-}
-
-type HTTPObserver struct {
-	url string
 }
 
 func NewFileObserver(path string) (*FileObserver, error) {
@@ -96,14 +92,18 @@ func NewFileObserver(path string) (*FileObserver, error) {
 	return &FileObserver{file: file, encoder: json.NewEncoder(file)}, nil
 }
 
-func NewHTTPObserver(url string) *HTTPObserver {
-	return &HTTPObserver{url}
-}
-
 func (f *FileObserver) Notify(log AuditLog) {
 	if err := f.encoder.Encode(&log); err != nil {
 		slog.Error("FileObserver", "encode", err)
 	}
+}
+
+type HTTPObserver struct {
+	url string
+}
+
+func NewHTTPObserver(url string) *HTTPObserver {
+	return &HTTPObserver{url}
 }
 
 func (h *HTTPObserver) Notify(log AuditLog) {
