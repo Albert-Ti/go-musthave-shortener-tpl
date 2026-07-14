@@ -11,7 +11,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 )
 
-type FileStorage struct {
+type fileStorage struct {
 	element *os.File
 	encoder *json.Encoder
 	urls    []map[string]string
@@ -23,7 +23,7 @@ type filRecord struct {
 	OriginalURL string `json:"original_url"`
 }
 
-func NewFileStorage(path string) (*FileStorage, error) {
+func NewFileStorage(path string) (*fileStorage, error) {
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, err
@@ -48,14 +48,14 @@ func NewFileStorage(path string) (*FileStorage, error) {
 		})
 	}
 
-	return &FileStorage{
+	return &fileStorage{
 		urls:    urls,
 		element: file,
 		encoder: json.NewEncoder(file),
 	}, nil
 }
 
-func (fs *FileStorage) Get(ctx context.Context, key string) (string, error) {
+func (fs *fileStorage) Get(ctx context.Context, key string) (string, error) {
 	for i := range fs.urls {
 		if fs.urls[i]["key"] == key {
 			return fs.urls[i]["url"], nil
@@ -64,7 +64,7 @@ func (fs *FileStorage) Get(ctx context.Context, key string) (string, error) {
 	return "", errors.New("No Content")
 }
 
-func (fs *FileStorage) GetAll(ctx context.Context, userID string) ([]map[string]string, error) {
+func (fs *fileStorage) GetAll(ctx context.Context, userID string) ([]map[string]string, error) {
 	var results = make([]map[string]string, 0)
 
 	for i := range fs.urls {
@@ -76,7 +76,9 @@ func (fs *FileStorage) GetAll(ctx context.Context, userID string) ([]map[string]
 	return results, nil
 }
 
-func (fs *FileStorage) Save(ctx context.Context, key string, url string, userID string) (string, error) {
+func (fs *fileStorage) Save(ctx context.Context, key string, url string, userID string) (string, error) {
+	snapshot := fs.saveMemento()
+
 	record := &filRecord{
 		Uuid:        len(fs.urls) + 1,
 		ShortURL:    key,
@@ -90,13 +92,15 @@ func (fs *FileStorage) Save(ctx context.Context, key string, url string, userID 
 	})
 
 	if err := fs.encoder.Encode(&record); err != nil {
+		fs.restore(snapshot)
 		return "", err
 	}
 
 	return key, nil
 }
 
-func (fs *FileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+func (fs *fileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+	snapshot := fs.saveMemento()
 	result := make([]model.BatchResp, len(batch))
 
 	for i, v := range batch {
@@ -115,6 +119,7 @@ func (fs *FileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, us
 		})
 
 		if err := fs.encoder.Encode(&record); err != nil {
+			fs.restore(snapshot)
 			return nil, err
 		}
 
@@ -127,14 +132,42 @@ func (fs *FileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, us
 	return result, nil
 }
 
-func (fs *FileStorage) BatchDelete(ctx context.Context, keys []string, userID string) error {
+func (fs *fileStorage) BatchDelete(ctx context.Context, keys []string, userID string) error {
 	return nil
 }
 
-func (u *FileStorage) Close() error {
+func (u *fileStorage) Close() error {
 	return u.element.Close()
 }
 
-func (u *FileStorage) Ping(ctx context.Context) error {
+func (u *fileStorage) Ping(ctx context.Context) error {
 	return nil
+}
+
+// pattern prototype(глубокое клонирование)
+func (fs *fileStorage) clone() []map[string]string {
+	cloned := make([]map[string]string, len(fs.urls))
+	for i, m := range fs.urls {
+		copied := make(map[string]string, len(m))
+		for k, v := range m {
+			copied[k] = v
+		}
+		cloned[i] = copied
+	}
+	return cloned
+}
+
+// pattern Memento(Хранитель)
+type memento struct {
+	state []map[string]string
+}
+
+func (fs *fileStorage) saveMemento() *memento {
+	return &memento{
+		state: fs.clone(),
+	}
+}
+
+func (fs *fileStorage) restore(m *memento) {
+	fs.urls = m.state
 }

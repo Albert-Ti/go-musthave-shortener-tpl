@@ -16,8 +16,6 @@ func TestBuild(t *testing.T) {
 		dsn      string
 	}
 
-	// все ENV-переменные, которые Build() умеет читать —
-	// нужны, чтобы гарантированно зачищать их между кейсами
 	allEnvKeys := []string{
 		"SERVER_ADDRESS",
 		"BASE_URL",
@@ -75,7 +73,7 @@ func TestBuild(t *testing.T) {
 		},
 		{
 			name: "FILE_STORAGE_PATH env disables leaked DATABASE_CONN_STRING",
-			args: []string{"test"}, // без -f и без -d, как в реальном CI
+			args: []string{"test"}, // без -f и без -d
 			env: map[string]string{
 				"FILE_STORAGE_PATH":    "/tmp/storage.json",
 				"DATABASE_CONN_STRING": "postgres://localhost/db",

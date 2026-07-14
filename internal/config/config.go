@@ -16,7 +16,7 @@ type Options struct {
 	Mode            string
 }
 
-// pattern Builder
+// pattern Builder(Строитель/функц. опции)
 func NewOptions(opts ...func(*Options)) *Options {
 	o := &Options{
 		RunAddr:      "localhost:8080",

@@ -20,7 +20,7 @@ type Repository interface {
 	Close() error
 }
 
-// pattern Factory
+// pattern Factory(Фабрика)
 func NewRepository(cfg *config.Options) (Repository, error) {
 	if cfg.DatabaseDSN != "" {
 		slog.Info("Using database storage")
