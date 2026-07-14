@@ -112,7 +112,7 @@ func (ps *PostgresStorage) Save(ctx context.Context, key string, url string, use
 	return key, nil
 }
 
-func (ps *PostgresStorage) BatchSave(ctx context.Context, items []model.BatchReq, userID string) ([]model.BatchResp, error) {
+func (ps *PostgresStorage) BatchSave(ctx context.Context, items []model.BatchReq, baseURL string, userID string) ([]model.BatchResp, error) {
 	results := make([]model.BatchResp, len(items))
 
 	queryStr := `
@@ -141,7 +141,7 @@ func (ps *PostgresStorage) BatchSave(ctx context.Context, items []model.BatchReq
 
 		results[i] = model.BatchResp{
 			CorrelationID: v.CorrelationID,
-			ShortURL:      returnedKey,
+			ShortURL:      baseURL + "/" + returnedKey,
 		}
 	}
 

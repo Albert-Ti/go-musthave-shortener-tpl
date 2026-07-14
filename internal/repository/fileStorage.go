@@ -99,7 +99,7 @@ func (fs *fileStorage) Save(ctx context.Context, key string, url string, userID 
 	return key, nil
 }
 
-func (fs *fileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+func (fs *fileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, baseURL string, userID string) ([]model.BatchResp, error) {
 	snapshot := fs.saveMemento()
 	result := make([]model.BatchResp, len(batch))
 
@@ -125,7 +125,7 @@ func (fs *fileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, us
 
 		result[i] = model.BatchResp{
 			CorrelationID: v.CorrelationID,
-			ShortURL:      key,
+			ShortURL:      baseURL + "/" + key,
 		}
 	}
 

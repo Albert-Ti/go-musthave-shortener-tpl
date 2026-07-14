@@ -75,7 +75,7 @@ func (s *Service) Save(ctx context.Context, url string, userID string) (string, 
 // }
 
 func (s *Service) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
-	return s.repository.BatchSave(ctx, batch, userID)
+	return s.repository.BatchSave(ctx, batch, s.cfg.BaseURL, userID)
 }
 
 func (s *Service) BatchDelete(ctx context.Context, keys []string, userID string) error {

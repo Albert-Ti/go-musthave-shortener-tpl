@@ -56,18 +56,18 @@ func (mr *MockRepositoryMockRecorder) BatchDelete(ctx, keys, userID any) *gomock
 }
 
 // BatchSave mocks base method.
-func (m *MockRepository) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+func (m *MockRepository) BatchSave(ctx context.Context, batch []model.BatchReq, baseURL, userID string) ([]model.BatchResp, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BatchSave", ctx, batch, userID)
+	ret := m.ctrl.Call(m, "BatchSave", ctx, batch, baseURL, userID)
 	ret0, _ := ret[0].([]model.BatchResp)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // BatchSave indicates an expected call of BatchSave.
-func (mr *MockRepositoryMockRecorder) BatchSave(ctx, batch, userID any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) BatchSave(ctx, batch, baseURL, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchSave", reflect.TypeOf((*MockRepository)(nil).BatchSave), ctx, batch, userID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchSave", reflect.TypeOf((*MockRepository)(nil).BatchSave), ctx, batch, baseURL, userID)
 }
 
 // Close mocks base method.

@@ -24,7 +24,6 @@ type Auditor struct {
 	ch       chan AuditLog
 	action   map[string]string
 	observer []observer
-	Disabled bool
 }
 
 func NewAuditor(auditFile string, auditURL string) (*Auditor, error) {

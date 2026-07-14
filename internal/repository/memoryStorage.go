@@ -47,7 +47,7 @@ func (ms *memoryStorage) Save(ctx context.Context, key string, url string, userI
 	return key, nil
 }
 
-func (ms *memoryStorage) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+func (ms *memoryStorage) BatchSave(ctx context.Context, batch []model.BatchReq, baseURL string, userID string) ([]model.BatchResp, error) {
 	result := make([]model.BatchResp, len(batch))
 
 	for i, v := range batch {
@@ -61,7 +61,7 @@ func (ms *memoryStorage) BatchSave(ctx context.Context, batch []model.BatchReq, 
 
 		result[i] = model.BatchResp{
 			CorrelationID: v.CorrelationID,
-			ShortURL:      key,
+			ShortURL:      baseURL + "/" + key,
 		}
 	}
 

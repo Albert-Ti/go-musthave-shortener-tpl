@@ -35,7 +35,7 @@ func BenchmarkBatchSave(b *testing.B) {
 			svc := NewService(mockRepo, cfg)
 
 			mockRepo.EXPECT().
-				BatchSave(ctx, gomock.Any(), gomock.Any()).
+				BatchSave(ctx, gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(nil, nil).AnyTimes()
 
 			b.ReportAllocs()
