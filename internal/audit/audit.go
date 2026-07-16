@@ -1,3 +1,4 @@
+// При Написание аудита использовался pattern Наблюдатель(Observer).
 package audit
 
 import (
@@ -30,7 +31,7 @@ type Auditor struct {
 	observer []observer
 }
 
-// NewAuditor создаёt Auditor и подписывает на него FileObserver (если задан
+// NewAuditor создаёт Auditor и подписывает на него FileObserver (если задан
 // auditFile) и HTTPObserver (если задан auditURL). Если оба параметра пустые,
 // возвращает (nil, nil) - аудит считается выключенным.
 //

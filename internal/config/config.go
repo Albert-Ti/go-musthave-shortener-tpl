@@ -1,3 +1,4 @@
+// При Написание configs использовался pattern Builder(Строитель/функц. опции)
 package config
 
 import (
@@ -5,6 +6,8 @@ import (
 	"os"
 )
 
+// Options хранит настройки приложения, собранные из флагов командной строки,
+// переменных окружения и значений по умолчанию.
 type Options struct {
 	RunAddr         string
 	BaseURL         string
@@ -16,7 +19,15 @@ type Options struct {
 	Mode            string
 }
 
-// pattern Builder(Строитель/функц. опции)
+// NewOptions создаёт Options со значениями по умолчанию и применяет
+// переданные опции (pattern Builder / функциональные опции).
+//
+// Пример использования:
+//
+//	cfg := config.NewOptions(
+//	    config.WithBaseURL("http://localhost:8080"),
+//	    config.WithFileStoragePath("storage.json"),
+//	)
 func NewOptions(opts ...func(*Options)) *Options {
 	o := &Options{
 		RunAddr:      "localhost:8080",
@@ -31,15 +42,38 @@ func NewOptions(opts ...func(*Options)) *Options {
 	return o
 }
 
-func WithRunAddr(v string) func(*Options)         { return func(o *Options) { o.RunAddr = v } }
-func WithBaseURL(v string) func(*Options)         { return func(o *Options) { o.BaseURL = v } }
-func WithFileStoragePath(v string) func(*Options) { return func(o *Options) { o.FileStoragePath = v } }
-func WithDatabaseDSN(v string) func(*Options)     { return func(o *Options) { o.DatabaseDSN = v } }
-func WithJWTSecretKey(v string) func(*Options)    { return func(o *Options) { o.JWTSecretKey = v } }
-func WithAuditFile(v string) func(*Options)       { return func(o *Options) { o.AuditFile = v } }
-func WithAuditURL(v string) func(*Options)        { return func(o *Options) { o.AuditURL = v } }
-func WithMode(v string) func(*Options)            { return func(o *Options) { o.Mode = v } }
+// WithRunAddr задаёт адрес и порт, на которых запускается сервер.
+func WithRunAddr(v string) func(*Options) { return func(o *Options) { o.RunAddr = v } }
 
+// WithBaseURL задаёт базовый URL, используемый при формировании коротких ссылок.
+func WithBaseURL(v string) func(*Options) { return func(o *Options) { o.BaseURL = v } }
+
+// WithFileStoragePath задаёт путь к файлу для файлового хранилища.
+func WithFileStoragePath(v string) func(*Options) { return func(o *Options) { o.FileStoragePath = v } }
+
+// WithDatabaseDSN задаёт строку подключения к Postgres.
+func WithDatabaseDSN(v string) func(*Options) { return func(o *Options) { o.DatabaseDSN = v } }
+
+// WithJWTSecretKey задаёт секретный ключ для подписи JWT-токенов.
+func WithJWTSecretKey(v string) func(*Options) { return func(o *Options) { o.JWTSecretKey = v } }
+
+// WithAuditFile задаёт путь к файлу-приёмнику аудита.
+func WithAuditFile(v string) func(*Options) { return func(o *Options) { o.AuditFile = v } }
+
+// WithAuditURL задаёт URL удалённого сервера-приёмника аудита.
+func WithAuditURL(v string) func(*Options) { return func(o *Options) { o.AuditURL = v } }
+
+// WithMode задаёт режим работы приложения (например, "dev" или "debug").
+func WithMode(v string) func(*Options) { return func(o *Options) { o.Mode = v } }
+
+// Build собирает Options из флагов командной строки и переменных окружения.
+// Флаг имеет приоритет, если задан явно; иначе используется переменная
+// окружения; иначе — значение по умолчанию.
+//
+// Если FileStoragePath задан, а DatabaseDSN не передан явно флагом -d,
+// DatabaseDSN принудительно очищается — это защита от случая, когда
+// DATABASE_CONN_STRING задан в окружении глобально, но пользователь
+// намеренно хочет использовать файловое хранилище.
 func Build() *Options {
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	var raw Options
