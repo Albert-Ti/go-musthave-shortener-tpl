@@ -9,10 +9,12 @@ import (
 	"time"
 )
 
+// observer получает уведомление о каждой новой записи аудита.
 type observer interface {
 	Notify(log AuditLog)
 }
 
+// AuditLog - запись аудита одного запроса.
 type AuditLog struct {
 	Ts     int64  `json:"ts"`
 	Action string `json:"action"`
@@ -20,12 +22,25 @@ type AuditLog struct {
 	URL    string `json:"url"`
 }
 
+// Auditor рассылает записи аудита подписанным наблюдателям (observer)
+// через буферизованный канал, не блокируя обработку HTTP-запроса.
 type Auditor struct {
 	ch       chan AuditLog
 	action   map[string]string
 	observer []observer
 }
 
+// NewAuditor создаёt Auditor и подписывает на него FileObserver (если задан
+// auditFile) и HTTPObserver (если задан auditURL). Если оба параметра пустые,
+// возвращает (nil, nil) - аудит считается выключенным.
+//
+// Пример использования:
+//
+//	auditor, err := audit.NewAuditor(cfg.AuditFile, cfg.AuditURL)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	auditor.AddLog(http.MethodPost, r.RequestURI, userID, baseURL)
 func NewAuditor(auditFile string, auditURL string) (*Auditor, error) {
 	if auditFile == "" && auditURL == "" {
 		return nil, nil
@@ -55,6 +70,8 @@ func NewAuditor(auditFile string, auditURL string) (*Auditor, error) {
 	return auditor, nil
 }
 
+// AddLog формирует AuditLog из параметров запроса и отправляет его всем
+// подписанным наблюдателям. Вызов не блокируется, пока канал не заполнен.
 func (a *Auditor) AddLog(method, requestURI, userID, baseURL string) {
 	log := AuditLog{
 		Ts:     time.Now().Unix(),
@@ -78,11 +95,13 @@ func (a *Auditor) broadcast() {
 	}
 }
 
+// FileObserver записывает каждую AuditLog в файл одной JSON-строкой.
 type FileObserver struct {
 	file    *os.File
 	encoder *json.Encoder
 }
 
+// NewFileObserver открывает (или создаёт) файл по path для дозаписи логов.
 func NewFileObserver(path string) (*FileObserver, error) {
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -97,10 +116,12 @@ func (f *FileObserver) Notify(log AuditLog) {
 	}
 }
 
+// HTTPObserver отправляет каждую AuditLog POST-запросом на url.
 type HTTPObserver struct {
 	url string
 }
 
+// NewHTTPObserver создаёт HTTPObserver, отправляющий логи на url.
 func NewHTTPObserver(url string) *HTTPObserver {
 	return &HTTPObserver{url}
 }

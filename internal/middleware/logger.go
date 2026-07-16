@@ -6,12 +6,15 @@ import (
 	"time"
 )
 
+// responseData собирает данные об ответе для последующего логирования.
 type responseData struct {
 	size   int
 	status int
 	body   string
 }
 
+// loggingResponseWriter оборачивает http.ResponseWriter, перехватывая
+// статус и размер ответа.
 type loggingResponseWriter struct {
 	http.ResponseWriter
 	responseData *responseData
@@ -29,6 +32,14 @@ func (l *loggingResponseWriter) WriteHeader(statusCode int) {
 	l.responseData.status = statusCode
 }
 
+// WithLogging - middleware, логирующее каждый запрос: метод, URI,
+// длительность, статус и размер ответа. Уровень лога зависит от статуса:
+// Error при 5xx, Warn при 4xx, Info в остальных случаях.
+//
+// Пример использования:
+//
+//	r := chi.NewRouter()
+//	r.Use(middleware.WithLogging)
 func WithLogging(h http.Handler) http.Handler {
 	logFn := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

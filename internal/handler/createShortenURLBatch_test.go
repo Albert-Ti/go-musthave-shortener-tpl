@@ -1,17 +1,23 @@
-package handler
+package handler_test
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository/mocks"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
@@ -19,6 +25,53 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// ExampleCreateShortenURLBatch демонстрирует пакетное создание коротких ссылок
+// (POST /api/shorten/batch). Возвращает срез model.BatchResp.
+func ExampleCreateShortenURLBatch() {
+	dir, err := os.MkdirTemp("", "example")
+	if err != nil {
+		panic(err)
+	}
+
+	cfg := config.NewOptions(
+		config.WithFileStoragePath(filepath.Join(dir, "example.json")),
+		config.WithBaseURL("http://localhost:8080"),
+	)
+
+	repo, err := repository.NewRepository(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	svc := service.NewService(repo, config.NewOptions(config.WithBaseURL("http://localhost:8080")))
+
+	defer utils.GenerateMockUUID()()
+
+	reqBody, _ := json.Marshal([]model.BatchReq{
+		{CorrelationID: "ID1", OriginalURL: "https://yandex.ru"},
+	})
+
+	req := httptest.NewRequestWithContext(
+		context.WithValue(context.Background(),
+			middleware.UserIDKey, "123"),
+		http.MethodPost,
+		"/api/shorten/batch",
+		bytes.NewReader(reqBody),
+	)
+
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	handler.CreateShortenURLBatch(svc)(rr, req)
+
+	fmt.Println(rr.Code)
+	fmt.Println(strings.TrimSpace(rr.Body.String()))
+
+	// Output:
+	// 201
+	// [{"correlation_id":"ID1","short_url":"http://localhost:8080/key_1"}]
+}
 
 func TestCreateShortenURLBatch(t *testing.T) {
 	cfg := config.NewOptions(config.WithBaseURL("http://localhost:8080"))
@@ -118,7 +171,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			}
 
 			svc := service.NewService(mockRepo, cfg)
-			handler := CreateShortenURLBatch(svc)
+			handler := handler.CreateShortenURLBatch(svc)
 
 			bodyBytes, err := json.Marshal(tt.body)
 			require.NoError(t, err)

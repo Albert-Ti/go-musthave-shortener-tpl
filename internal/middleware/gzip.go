@@ -8,6 +8,7 @@ import (
 	"sync"
 )
 
+// gzipPool переиспользует *gzip.Writer, чтобы не создавать новый на каждый запрос.
 type gzipPool struct {
 	mu   sync.Mutex
 	free []*gzip.Writer
@@ -41,6 +42,7 @@ func (p *gzipPool) put(gz *gzip.Writer) {
 	p.free = append(p.free, gz)
 }
 
+// compressWriter оборачивает http.ResponseWriter и сжимает ответ в gzip.
 type compressWriter struct {
 	w    http.ResponseWriter
 	zw   *gzip.Writer
@@ -87,6 +89,7 @@ func (c *compressWriter) Close() error {
 	return nil
 }
 
+// compressReader оборачивает io.ReadCloser и распаковывает gzip при чтении.
 type compressReader struct {
 	r  io.ReadCloser
 	zr *gzip.Reader
@@ -115,6 +118,13 @@ func (c *compressReader) Close() error {
 	return c.zr.Close()
 }
 
+// GzipCompress - middleware, сжимающее тело запроса и ответа в gzip,
+// если клиент это поддерживает.
+//
+// Пример использования:
+//
+//	r := chi.NewRouter()
+//	r.Use(middleware.GzipCompress)
 func GzipCompress(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

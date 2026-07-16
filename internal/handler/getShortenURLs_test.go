@@ -2,18 +2,63 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository/mocks"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
+
+// ExampleGetShortenURLs демонстрирует получение всех ссылок пользователя
+// (GET /api/user/urls). Возвращает JSON-массив пар key/url.
+func ExampleGetShortenURLs() {
+	dir, err := os.MkdirTemp("", "example")
+	if err != nil {
+		panic(err)
+	}
+
+	cfg := config.NewOptions(
+		config.WithFileStoragePath(filepath.Join(dir, "example.json")),
+		config.WithBaseURL("http://localhost:8080"),
+	)
+
+	repo, err := repository.NewRepository(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	_, _ = repo.Save(context.Background(), "key_1", "https://yandex.ru", "123")
+
+	svc := service.NewService(repo, config.NewOptions(config.WithBaseURL("http://localhost:8080")))
+
+	req := httptest.NewRequestWithContext(
+		context.WithValue(context.Background(),
+			middleware.UserIDKey, "123"),
+		http.MethodGet,
+		"/api/user/urls",
+		nil,
+	)
+	rr := httptest.NewRecorder()
+
+	GetShortenURLs(svc)(rr, req)
+
+	fmt.Println(rr.Code)
+	fmt.Println(strings.TrimSpace(rr.Body.String()))
+
+	// Output:
+	// 200
+	// [{"short_url":"http://localhost:8080/key_1","original_url":"https://yandex.ru"}]
+}
 
 func TestGetShortenURLs(t *testing.T) {
 	tmpDir := t.TempDir()

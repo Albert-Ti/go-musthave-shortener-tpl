@@ -1,17 +1,20 @@
-package handler
+package handler_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
@@ -19,6 +22,49 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// ExampleCreateShortenURL демонстрирует создание короткой ссылки из тела запроса
+// в формате text/plain (POST /).
+func ExampleCreateShortenURL() {
+	dir, err := os.MkdirTemp("", "example")
+	if err != nil {
+		panic(err)
+	}
+
+	cfg := config.NewOptions(
+		config.WithFileStoragePath(filepath.Join(dir, "example.json")),
+		config.WithBaseURL("http://localhost:8080"),
+	)
+
+	repo, err := repository.NewRepository(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	svc := service.NewService(repo, config.NewOptions(config.WithBaseURL("http://localhost:8080")))
+	auditor, _ := audit.NewAuditor("", "")
+
+	defer utils.GenerateMockUUID()()
+
+	req := httptest.NewRequestWithContext(
+		context.WithValue(context.Background(),
+			middleware.UserIDKey, "123"),
+		http.MethodPost,
+		"/",
+		strings.NewReader("https://yandex.ru"),
+	)
+
+	rr := httptest.NewRecorder()
+
+	handler.CreateShortenURL(svc, auditor, "http://localhost:8080")(rr, req)
+
+	fmt.Println(rr.Code)
+	fmt.Println(strings.TrimSpace(rr.Body.String()))
+
+	// Output:
+	// 201
+	// http://localhost:8080/key_1
+}
 
 func TestCreateShortURL(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -40,7 +86,7 @@ func TestCreateShortURL(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), middleware.UserIDKey, "123")
 		r = r.WithContext(ctx)
-		CreateShortenURL(svc, auditor, cfg.BaseURL)(w, r)
+		handler.CreateShortenURL(svc, auditor, cfg.BaseURL)(w, r)
 	})
 	srv := httptest.NewServer(handler)
 

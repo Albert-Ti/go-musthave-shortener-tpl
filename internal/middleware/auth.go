@@ -11,13 +11,17 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// UserIDKey — ключ контекста.
 const UserIDKey string = "userID"
 
+// MyCustomClaims расширяет стандартные claims jwt.RegisteredClaims полем UserID,
+// чтобы связать выданный токен с конкретным пользователем сервиса.
 type MyCustomClaims struct {
 	jwt.RegisteredClaims
 	UserID string
 }
 
+// createToken подписывает новый JWT алгоритмом HS256 с claim UserID и сроком.
 func createToken(userID string, secretKey string) (string, error) {
 	t := jwt.New(jwt.SigningMethodHS256)
 
@@ -31,6 +35,7 @@ func createToken(userID string, secretKey string) (string, error) {
 	return t.SignedString([]byte(secretKey))
 }
 
+// createCookie создаёт HttpOnly-cookie с заданными именем и значением.
 func createCookie(name string, value string) *http.Cookie {
 	return &http.Cookie{
 		Name:     name,
@@ -39,6 +44,22 @@ func createCookie(name string, value string) *http.Cookie {
 	}
 }
 
+// AuthGuard возвращает middleware, которое аутентифицирует пользователя по
+// JWT-токену, хранящемуся в cookie "token".
+//
+// Если cookie отсутствует, middleware генерирует новый UserID (utils.GenerateUUID),
+// выпускает для него JWT, подписанный secretKey, и устанавливает его в cookie
+// "token" в ответе — так на первый запрос анонимный пользователь получает
+// постоянный идентификатор.
+//
+// Если cookie присутствует, middleware проверяет подпись и валидность токена.
+// При неверной подписи, истёкшем сроке действия или пустом UserID в claims
+// запрос прерывается с 401 Unauthorized.
+//
+// Пример использования:
+//
+//	r := chi.NewRouter()
+//	r.Use(middleware.AuthGuard(cfg.JWTSecretKey))
 func AuthGuard(secretKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -82,6 +103,7 @@ func AuthGuard(secretKey string) func(http.Handler) http.Handler {
 	}
 }
 
+// GetAuthUserID извлекает идентификатор пользователя.
 func GetAuthUserID(ctx context.Context) (string, error) {
 	userID, ok := ctx.Value(UserIDKey).(string)
 	if !ok || userID == "" {

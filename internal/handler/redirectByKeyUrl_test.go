@@ -1,13 +1,17 @@
-package handler
+package handler_test
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository/mocks"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
@@ -16,6 +20,43 @@ import (
 )
 
 const savedKey = "abc123"
+
+// ExampleRedirectByKeyURL демонстрирует редирект по короткому ключу
+// (GET /{id}). Возвращает 307 и заголовок Location с исходным URL.
+func ExampleRedirectByKeyURL() {
+	dir, err := os.MkdirTemp("", "example")
+	if err != nil {
+		panic(err)
+	}
+
+	cfg := config.NewOptions(
+		config.WithFileStoragePath(filepath.Join(dir, "example.json")),
+		config.WithBaseURL("http://localhost:8080"),
+	)
+
+	repo, err := repository.NewRepository(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	// Заранее сохраняем ссылку, чтобы было куда редиректить.
+	_, _ = repo.Save(context.Background(), savedKey, "http://yandex.ru", "user-1")
+
+	svc := service.NewService(repo, config.NewOptions(config.WithBaseURL("http://localhost:8080")))
+	auditor, _ := audit.NewAuditor("", "")
+
+	req := httptest.NewRequest(http.MethodGet, "/abc123", nil)
+	rr := httptest.NewRecorder()
+
+	handler.RedirectByKeyURL(svc, auditor, "http://localhost:8080")(rr, req)
+
+	fmt.Println(rr.Code)
+	fmt.Println(rr.Header().Get("Location"))
+
+	// Output:
+	// 307
+	// http://yandex.ru
+}
 
 func TestRedirectByKeyURL(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -101,7 +142,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 			w := httptest.NewRecorder()
 			auditor, _ := audit.NewAuditor("", "")
 
-			redirectHandler := RedirectByKeyURL(svc, auditor, cfg.BaseURL)
+			redirectHandler := handler.RedirectByKeyURL(svc, auditor, cfg.BaseURL)
 			redirectHandler(w, r)
 
 			result := w.Result()
