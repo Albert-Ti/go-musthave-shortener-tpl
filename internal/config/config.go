@@ -69,11 +69,6 @@ func WithMode(v string) func(*Options) { return func(o *Options) { o.Mode = v } 
 // Build собирает Options из флагов командной строки и переменных окружения.
 // Флаг имеет приоритет, если задан явно; иначе используется переменная
 // окружения; иначе — значение по умолчанию.
-//
-// Если FileStoragePath задан, а DatabaseDSN не передан явно флагом -d,
-// DatabaseDSN принудительно очищается — это защита от случая, когда
-// DATABASE_CONN_STRING задан в окружении глобально, но пользователь
-// намеренно хочет использовать файловое хранилище.
 func Build() *Options {
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	var raw Options
