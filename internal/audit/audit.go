@@ -11,7 +11,7 @@ import (
 )
 
 // observer получает уведомление о каждой новой записи аудита.
-type observer interface {
+type Observer interface {
 	Notify(log AuditLog)
 }
 
@@ -28,7 +28,7 @@ type AuditLog struct {
 type Auditor struct {
 	ch       chan AuditLog
 	action   map[string]string
-	observer []observer
+	observer []Observer
 }
 
 // NewAuditor создаёт Auditor и подписывает на него FileObserver (если задан
@@ -66,6 +66,7 @@ func NewAuditor(auditFile string, auditURL string) (*Auditor, error) {
 		auditor.subscribe(NewHTTPObserver(auditURL))
 	}
 
+	// Горутина чтобы не блокировал вызов
 	go auditor.broadcast()
 
 	return auditor, nil
@@ -81,17 +82,21 @@ func (a *Auditor) AddLog(method, requestURI, userID, baseURL string) {
 		URL:    baseURL + requestURI,
 	}
 
-	a.ch <- log
+	select {
+	case a.ch <- log:
+	default:
+		slog.Info("Channel is full")
+	}
 }
 
-func (a *Auditor) subscribe(sub observer) {
+func (a *Auditor) subscribe(sub Observer) {
 	a.observer = append(a.observer, sub)
 }
 
 func (a *Auditor) broadcast() {
-	for log := range a.ch {
-		for _, sub := range a.observer {
-			sub.Notify(log)
+	for _, sub := range a.observer {
+		for log := range a.ch {
+			go sub.Notify(log) // Отдельная горутина для каждого наблюдателя
 		}
 	}
 }

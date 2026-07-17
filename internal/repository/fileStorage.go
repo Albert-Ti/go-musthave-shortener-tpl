@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,7 +13,7 @@ import (
 )
 
 type fileStorage struct {
-	element *os.File
+	file    *os.File
 	encoder *json.Encoder
 	urls    []map[string]string
 }
@@ -50,7 +51,7 @@ func NewFileStorage(path string) (*fileStorage, error) {
 
 	return &fileStorage{
 		urls:    urls,
-		element: file,
+		file:    file,
 		encoder: json.NewEncoder(file),
 	}, nil
 }
@@ -103,6 +104,9 @@ func (fs *fileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, ba
 	snapshot := fs.saveMemento()
 	result := make([]model.BatchResp, len(batch))
 
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+
 	for i, v := range batch {
 		key := utils.GenerateUUID()
 
@@ -118,7 +122,7 @@ func (fs *fileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, ba
 			"user_id": userID,
 		})
 
-		if err := fs.encoder.Encode(&record); err != nil {
+		if err := encoder.Encode(record); err != nil {
 			fs.restore(snapshot)
 			return nil, err
 		}
@@ -129,6 +133,12 @@ func (fs *fileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, ba
 		}
 	}
 
+	// пишем только тогда, когда все успешно закодировано(откат для файла)
+	if _, err := fs.file.Write(buf.Bytes()); err != nil {
+		fs.restore(snapshot)
+		return nil, err
+	}
+
 	return result, nil
 }
 
@@ -137,37 +147,24 @@ func (fs *fileStorage) BatchDelete(ctx context.Context, keys []string, userID st
 }
 
 func (u *fileStorage) Close() error {
-	return u.element.Close()
+	return u.file.Close()
 }
 
 func (u *fileStorage) Ping(ctx context.Context) error {
 	return nil
 }
 
-// pattern prototype(глубокое клонирование)
-func (fs *fileStorage) clone() []map[string]string {
-	cloned := make([]map[string]string, len(fs.urls))
-	for i, m := range fs.urls {
-		copied := make(map[string]string, len(m))
-		for k, v := range m {
-			copied[k] = v
-		}
-		cloned[i] = copied
-	}
-	return cloned
-}
-
 // pattern Memento(Хранитель)
 type memento struct {
-	state []map[string]string
+	state int
 }
 
 func (fs *fileStorage) saveMemento() *memento {
 	return &memento{
-		state: fs.clone(),
+		state: len(fs.urls),
 	}
 }
 
 func (fs *fileStorage) restore(m *memento) {
-	fs.urls = m.state
+	fs.urls = fs.urls[:m.state]
 }

@@ -31,7 +31,7 @@ func TestRepository(t *testing.T) {
 		}
 
 		fs := &fileStorage{
-			element: file,
+			file:    file,
 			urls:    urls,
 			encoder: json.NewEncoder(file),
 		}

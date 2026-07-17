@@ -116,11 +116,22 @@ func (ps *PostgresStorage) BatchSave(ctx context.Context, items []model.BatchReq
 	results := make([]model.BatchResp, len(items))
 
 	queryStr := `
-		INSERT INTO shorten_url (key, url, user_id)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (url)
-		DO UPDATE SET url = shorten_url.url
-		RETURNING key
+		WITH temp AS (
+			INSERT INTO shorten_url (key, url, user_id)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (url) DO NOTHING
+			RETURNING key
+		)
+		SELECT key
+		FROM temp
+
+		UNION ALL
+
+		SELECT key
+		FROM shorten_url
+		WHERE url = $2
+			AND NOT EXISTS (SELECT 1 FROM temp)
+		LIMIT 1;
   `
 	batch := &pgx.Batch{}
 

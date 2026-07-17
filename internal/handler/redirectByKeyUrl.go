@@ -36,13 +36,14 @@ func RedirectByKeyURL(svc *service.Service, auditor *audit.Auditor, baseURL stri
 		}
 
 		w.Header().Set("Location", url)
-		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 
 		userID, err := middleware.GetAuthUserID(ctx)
 		if err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
+
+		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 
 		if auditor != nil {
 			auditor.AddLog(r.Method, r.RequestURI, userID, baseURL)

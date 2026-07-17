@@ -12,6 +12,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository/mocks"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
@@ -45,7 +46,13 @@ func ExampleRedirectByKeyURL() {
 	svc := service.NewService(repo, config.NewOptions(config.WithBaseURL("http://localhost:8080")))
 	auditor, _ := audit.NewAuditor("", "")
 
-	req := httptest.NewRequest(http.MethodGet, "/abc123", nil)
+	req := httptest.NewRequestWithContext(
+		context.WithValue(context.Background(),
+			middleware.UserIDKey, "user-1"),
+		http.MethodGet,
+		"/abc123",
+		nil,
+	)
 	rr := httptest.NewRecorder()
 
 	handler.RedirectByKeyURL(svc, auditor, "http://localhost:8080")(rr, req)
@@ -138,7 +145,13 @@ func TestRedirectByKeyURL(t *testing.T) {
 			}
 			svc := service.NewService(mockRepo, cfg)
 
-			r := httptest.NewRequest(tt.want.method, tt.endpoint, nil)
+			r := httptest.NewRequestWithContext(
+				context.WithValue(context.Background(),
+					middleware.UserIDKey, "user-1"),
+				tt.want.method,
+				tt.endpoint,
+				nil,
+			)
 			w := httptest.NewRecorder()
 			auditor, _ := audit.NewAuditor("", "")
 
