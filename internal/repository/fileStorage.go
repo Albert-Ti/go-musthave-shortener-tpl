@@ -62,7 +62,7 @@ func (fs *fileStorage) Get(ctx context.Context, key string) (string, error) {
 			return fs.urls[i]["url"], nil
 		}
 	}
-	return "", errors.New("No Content")
+	return "", errors.New("no Content")
 }
 
 func (fs *fileStorage) GetAll(ctx context.Context, userID string) ([]map[string]string, error) {

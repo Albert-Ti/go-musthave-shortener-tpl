@@ -12,7 +12,9 @@ import (
 )
 
 // UserIDKey — ключ контекста.
-const UserIDKey string = "userID"
+type UserIDType string
+
+const UserIDKey UserIDType = "userID"
 
 // MyCustomClaims расширяет стандартные claims jwt.RegisteredClaims полем UserID,
 // чтобы связать выданный токен с конкретным пользователем сервиса.

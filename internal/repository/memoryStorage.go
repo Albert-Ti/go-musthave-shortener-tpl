@@ -22,7 +22,7 @@ func (ms *memoryStorage) Get(ctx context.Context, key string) (string, error) {
 			return ms.urls[i]["url"], nil
 		}
 	}
-	return "", errors.New("No Content")
+	return "", errors.New("no Content")
 }
 
 func (ms *memoryStorage) GetAll(ctx context.Context, userID string) ([]map[string]string, error) {

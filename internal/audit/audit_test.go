@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -100,4 +101,45 @@ func BenchmarkSlowHTTPObserver(b *testing.B) {
 	for b.Loop() {
 		auditor.AddLog(http.MethodGet, "/user/audit", "user-1", "http://localhost:8080")
 	}
+}
+
+type countingObserver struct {
+	count int
+}
+
+func (c *countingObserver) Notify(_ AuditLog) {
+	c.count++
+}
+
+func TestAuditor_GoroutineCount(t *testing.T) {
+	before := runtime.NumGoroutine()
+
+	auditor := &Auditor{
+		ch:     make(chan AuditLog, 20),
+		action: map[string]string{http.MethodGet: "follow"},
+	}
+
+	// Добавляем 3 наблюдателя
+	obs1 := &countingObserver{}
+	obs2 := &countingObserver{}
+	auditor.observer = []Observer{obs1, obs2}
+
+	go auditor.broadcast()
+
+	for range 100 {
+		auditor.AddLog(http.MethodGet, "/test", "user-1", "http://localhost")
+	}
+
+	time.Sleep(800 * time.Millisecond)
+	close(auditor.ch)
+	time.Sleep(200 * time.Millisecond)
+
+	after := runtime.NumGoroutine()
+
+	if after > before+5 {
+		t.Errorf("Too many goroutines: before=%d, after=%d, diff=%d",
+			before, after, after-before)
+	}
+
+	t.Logf("Goroutines: before=%d, after=%d", before, after)
 }
