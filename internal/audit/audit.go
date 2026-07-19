@@ -94,8 +94,8 @@ func (a *Auditor) subscribe(sub Observer) {
 }
 
 func (a *Auditor) broadcast() {
-	for _, sub := range a.observer {
-		for log := range a.ch {
+	for log := range a.ch {
+		for _, sub := range a.observer {
 			go sub.Notify(log) // Отдельная горутина для каждого наблюдателя
 		}
 	}

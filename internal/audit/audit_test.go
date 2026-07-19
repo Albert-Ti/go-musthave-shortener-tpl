@@ -89,7 +89,7 @@ func BenchmarkSlowHTTPObserver(b *testing.B) {
 	defer slowServer.Close()
 
 	auditor := &Auditor{
-		ch:     make(chan AuditLog, 20),
+		ch:     make(chan AuditLog, 100),
 		action: map[string]string{http.MethodGet: "follow"},
 	}
 	auditor.subscribe(NewHTTPObserver(slowServer.URL))
