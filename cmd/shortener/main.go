@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"net/http"
+	"os"
 
 	_ "net/http/pprof"
 
@@ -63,6 +64,7 @@ func main() {
 		panic(errRun)
 	}
 
+	os.Exit(0)
 }
 
 func runMigrations(dsn string) error {

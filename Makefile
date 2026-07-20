@@ -104,3 +104,11 @@ pprof-diff:
 # Запустить локальный сервер документации pkgsite на :6000
 pkgsite:
 	pkgsite -http=":6000" .
+
+# Скомпилировать multichecker.Main и запустить анализ через набор игнорируемых правил staticcheck_ignore.json
+analyze:
+	go build -o ./staticlint ./cmd/staticlint/ && ./staticlint ./...
+
+# Запуск анализа через файл конфигурации staticcheck.conf
+analyze-conf:
+	staticcheck ./...
