@@ -3,7 +3,6 @@ package main
 import (
 	"log/slog"
 	"net/http"
-	"os"
 
 	_ "net/http/pprof"
 
@@ -20,23 +19,26 @@ import (
 
 func main() {
 	cfg := config.Build()
-	repo, err := repository.NewRepository(cfg)
-
-	if err := runMigrations(cfg.DatabaseDSN); err != nil {
-		panic(err)
+	repo, errRepo := repository.NewRepository(cfg)
+	if errRepo != nil {
+		panic(errRepo)
 	}
+	defer func() {
+		if closeErr := repo.Close(); closeErr != nil {
+			panic(closeErr)
+		}
+	}()
 
-	if err != nil {
-		panic(err)
+	if errMigrate := runMigrations(cfg.DatabaseDSN); errMigrate != nil {
+		panic(errMigrate)
 	}
-	defer repo.Close()
 
 	svc := service.NewService(repo, cfg)
 	r := chi.NewRouter()
 
-	auditor, err := audit.NewAuditor(cfg.AuditFile, cfg.AuditURL)
-	if err != nil {
-		panic(err)
+	auditor, errAudit := audit.NewAuditor(cfg.AuditFile, cfg.AuditURL)
+	if errAudit != nil {
+		panic(errAudit)
 	}
 
 	r.Use(chiMiddleware.RealIP)
@@ -55,7 +57,11 @@ func main() {
 
 	if cfg.Mode == "debug" {
 		slog.Info("Running server pprof", "host", "localhost:6060")
-		go http.ListenAndServe("localhost:6060", nil)
+		go func() {
+			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+				slog.Error("failed to Running server pprof", "error", err)
+			}
+		}()
 	}
 
 	slog.Info("Running server", "host", cfg.RunAddr)
@@ -64,27 +70,30 @@ func main() {
 		panic(errRun)
 	}
 
-	os.Exit(0)
 }
 
 func runMigrations(dsn string) error {
 	if dsn == "" {
 		return nil
 	}
-	m, err := migrate.New("file://migrations", dsn)
-	if err != nil {
-		return err
+	m, errMigrate := migrate.New("file://migrations", dsn)
+	if errMigrate != nil {
+		return errMigrate
 	}
-	defer m.Close()
+	defer func() {
+		if srcErr, dbErr := m.Close(); srcErr != nil || dbErr != nil {
+			slog.Error("failed to close migrate instance", "source_error", srcErr, "db_error", dbErr)
+		}
+	}()
 
-	err = m.Up()
-	switch err {
+	errMigrate = m.Up()
+	switch errMigrate {
 	case nil:
 		slog.Info("Migrations applied successfully")
 	case migrate.ErrNoChange:
 		slog.Info("Database schema is up-to-date")
 	default:
-		return err
+		return errMigrate
 	}
 	return nil
 }

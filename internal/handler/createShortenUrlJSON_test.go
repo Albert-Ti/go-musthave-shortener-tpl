@@ -81,7 +81,9 @@ func TestCreateShortURLJSON(t *testing.T) {
 	if e != nil {
 		panic(e)
 	}
-	defer repo.Close()
+	defer func() {
+		require.NoError(t, repo.Close())
+	}()
 
 	svc := service.NewService(repo, cfg)
 	auditor, _ := audit.NewAuditor("", "")
@@ -196,16 +198,18 @@ func TestCreateShortURLJSON(t *testing.T) {
 			require.NoError(t, err)
 
 			defer func() {
-				if err := resp.Body.Close(); err != nil {
-					slog.Error("Failed to close response body", "error", err)
+				if errBody := resp.Body.Close(); errBody != nil {
+					slog.Error("Failed to close response body", "error", errBody)
 				}
 			}()
 
 			var reader io.Reader = resp.Body
 			if resp.Header.Get("Content-Encoding") == "gzip" {
-				gzReader, err := gzip.NewReader(resp.Body)
-				require.NoError(t, err)
-				defer gzReader.Close()
+				gzReader, errGzip := gzip.NewReader(resp.Body)
+				require.NoError(t, errGzip)
+				defer func() {
+					require.NoError(t, gzReader.Close())
+				}()
 				reader = gzReader
 			}
 

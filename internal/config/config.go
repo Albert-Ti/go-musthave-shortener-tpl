@@ -79,7 +79,9 @@ func Build() *Options {
 	fs.StringVar(&raw.AuditFile, "audit-file", "", "путь к файлу-приёмнику")
 	fs.StringVar(&raw.AuditURL, "audit-url", "", "URL удаленного сервера-приёмника")
 
-	fs.Parse(os.Args[1:])
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		panic(err)
+	}
 
 	explicit := map[string]bool{}
 	fs.Visit(func(f *flag.Flag) {

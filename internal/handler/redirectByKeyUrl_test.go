@@ -18,6 +18,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const savedKey = "abc123"
@@ -159,7 +160,9 @@ func TestRedirectByKeyURL(t *testing.T) {
 			redirectHandler(w, r)
 
 			result := w.Result()
-			defer result.Body.Close()
+			defer func() {
+				require.NoError(t, result.Body.Close())
+			}()
 
 			assert.Equal(t, tt.want.code, result.StatusCode)
 			if tt.want.location != "" {

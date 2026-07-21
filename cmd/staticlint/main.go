@@ -17,6 +17,7 @@ import (
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/cmd/staticlint/osexitcheck"
 	"github.com/kisielk/errcheck/errcheck"
+	gosec "github.com/securego/gosec/v2/analyzers"
 	"github.com/timakin/bodyclose/passes/bodyclose"
 )
 
@@ -49,6 +50,20 @@ func main() {
 		osexitcheck.Analyzer,
 	}
 
+	// Анализ потенциальных уязвимостей безопасности
+	gosecAll := gosec.BuildDefaultAnalyzers()
+	// Игнорирование конфликтных
+	brokenSSA := map[string]bool{
+		"G115": true, // integer overflow conversion (SSA)
+		"G602": true, // slice access out of bounds (SSA)
+		"G407": true, // hardcoded IV (SSA/taint)
+	}
+	for _, a := range gosecAll {
+		if !brokenSSA[a.Name] {
+			mychecks = append(mychecks, a)
+		}
+	}
+
 	checks := make(map[string]bool)
 	for _, v := range ignoreChecks {
 		checks[v] = true
@@ -57,7 +72,7 @@ func main() {
 	mychecks = append(mychecks, filterStaticcheck(checks)...)
 
 	// Стандартные анализаторы passes (printf, shadow, structtag, nilness).
-	// Публичные анализаторы (errcheck, bodyclose, nilness).
+	// Публичные анализаторы (errcheck, bodyclose, gosec).
 	// Мой анализатор (osexitcheck).
 	// Анализаторы библиотеки staticcheck.
 	multichecker.Main(

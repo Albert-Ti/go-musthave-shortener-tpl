@@ -18,6 +18,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ExampleDeleteShortenURLs демонстрирует массовое удаление ссылок пользователя
@@ -145,7 +146,9 @@ func TestDeleteShortenURLs(t *testing.T) {
 			handler.ServeHTTP(rr, req)
 
 			res := rr.Result()
-			defer res.Body.Close()
+			defer func() {
+				require.NoError(t, res.Body.Close())
+			}()
 
 			assert.Equal(t, tt.statusCode, res.StatusCode)
 		})

@@ -78,7 +78,9 @@ func TestCreateShortURL(t *testing.T) {
 	if e != nil {
 		panic(e)
 	}
-	defer repo.Close()
+	defer func() {
+		require.NoError(t, repo.Close())
+	}()
 
 	svc := service.NewService(repo, cfg)
 	auditor, _ := audit.NewAuditor("", "")

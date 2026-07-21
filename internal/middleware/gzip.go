@@ -3,6 +3,7 @@ package middleware
 import (
 	"compress/gzip"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -136,14 +137,21 @@ func GzipCompress(next http.Handler) http.Handler {
 			}
 
 			r.Body = cr
-			defer cr.Close()
+			defer func() {
+				if err := cr.Close(); err != nil {
+					slog.Error("gzip: close request body reader:", "ERROR", err)
+				}
+			}()
 		}
 
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			cw := newCompressWriter(w)
-
 			w = cw
-			defer cw.Close()
+			defer func() {
+				if err := cw.Close(); err != nil {
+					slog.Error("gzip: close response writer:", "ERROR", err)
+				}
+			}()
 		}
 
 		next.ServeHTTP(w, r)

@@ -26,8 +26,8 @@ func CreateShortenURL(svc *service.Service, auditor *audit.Auditor, baseURL stri
 		}
 
 		defer func() {
-			if err := r.Body.Close(); err != nil {
-				slog.Error("Failed to close request body", "error", err)
+			if errBody := r.Body.Close(); errBody != nil {
+				slog.Error("Failed to close request body", "error", errBody)
 			}
 		}()
 
@@ -50,6 +50,7 @@ func CreateShortenURL(svc *service.Service, auditor *audit.Auditor, baseURL stri
 		}
 
 		fullURL := fmt.Sprintf("%s/%s", baseURL, keyURL)
+
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 
 		if !isNew {
@@ -58,7 +59,11 @@ func CreateShortenURL(svc *service.Service, auditor *audit.Auditor, baseURL stri
 			w.WriteHeader(http.StatusCreated)
 		}
 
-		w.Write([]byte(fullURL))
+		_, errWrite := w.Write([]byte(fullURL))
+		if errWrite != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		if auditor != nil {
 			auditor.AddLog(r.Method, r.RequestURI, userID, baseURL)

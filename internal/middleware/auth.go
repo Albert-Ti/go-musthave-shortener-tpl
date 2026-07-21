@@ -65,7 +65,7 @@ func createCookie(name string, value string) *http.Cookie {
 func AuthGuard(secretKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			cookie, err := r.Cookie("token")
+			reqCookie, err := r.Cookie("token")
 			var authorizedUserID string
 
 			if err != nil {
@@ -78,13 +78,13 @@ func AuthGuard(secretKey string) func(http.Handler) http.Handler {
 					return
 				}
 
-				cookie := createCookie("token", tokenString)
-				http.SetCookie(w, cookie)
+				newCookie := createCookie("token", tokenString)
+				http.SetCookie(w, newCookie)
 			} else {
 				claims := &MyCustomClaims{}
 
 				token, err := jwt.ParseWithClaims(
-					cookie.Value,
+					reqCookie.Value,
 					claims,
 					func(t *jwt.Token) (any, error) {
 						return []byte(secretKey), nil
