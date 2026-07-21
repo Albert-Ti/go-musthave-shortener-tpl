@@ -139,7 +139,7 @@ func GzipCompress(next http.Handler) http.Handler {
 			r.Body = cr
 			defer func() {
 				if err := cr.Close(); err != nil {
-					slog.Error("gzip: close request body reader:", "ERROR", err)
+					slog.Error("gzip: close request body reader:", "error", err)
 				}
 			}()
 		}
@@ -149,7 +149,7 @@ func GzipCompress(next http.Handler) http.Handler {
 			w = cw
 			defer func() {
 				if err := cw.Close(); err != nil {
-					slog.Error("gzip: close response writer:", "ERROR", err)
+					slog.Error("gzip: close response writer:", "error", err)
 				}
 			}()
 		}

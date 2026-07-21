@@ -10,14 +10,14 @@ import (
 	"time"
 )
 
-// observer получает уведомление о каждой новой записи аудита.
+// Observer получает уведомление о каждой новой записи аудита.
 type Observer interface {
 	Notify(log AuditLog)
 }
 
 // AuditLog - запись аудита одного запроса.
 type AuditLog struct {
-	Ts     int64  `json:"ts"`
+	TS     int64  `json:"ts"`
 	Action string `json:"action"`
 	UserID string `json:"user_id"`
 	URL    string `json:"url"`
@@ -76,7 +76,7 @@ func NewAuditor(auditFile string, auditURL string) (*Auditor, error) {
 // подписанным наблюдателям. Вызов не блокируется, пока канал не заполнен.
 func (a *Auditor) AddLog(method, requestURI, userID, baseURL string) {
 	log := AuditLog{
-		Ts:     time.Now().Unix(),
+		TS:     time.Now().Unix(),
 		Action: a.action[method],
 		UserID: userID,
 		URL:    baseURL + requestURI,
@@ -139,7 +139,14 @@ func (h *HTTPObserver) Notify(log AuditLog) {
 		return
 	}
 
-	if _, err := http.Post(h.url, "application/json", bytes.NewReader(b)); err != nil {
+	resp, err := http.Post(h.url, "application/json", bytes.NewReader(b))
+	if err != nil {
 		slog.Error("HTTPObserver", "post", err)
+		return
 	}
+	defer func() {
+		if errClose := resp.Body.Close(); errClose != nil {
+			slog.Error("HTTPObserver", "close", errClose)
+		}
+	}()
 }

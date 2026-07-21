@@ -11,9 +11,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// UserIDKey — ключ контекста.
 type UserIDType string
 
+// UserIDKey — ключ контекста.
 const UserIDKey UserIDType = "userID"
 
 // MyCustomClaims расширяет стандартные claims jwt.RegisteredClaims полем UserID,
