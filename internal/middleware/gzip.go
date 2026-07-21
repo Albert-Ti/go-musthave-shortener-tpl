@@ -5,17 +5,59 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 )
 
-type compressWriter struct {
-	w  http.ResponseWriter
-	zw *gzip.Writer
+// gzipPool переиспользует *gzip.Writer, чтобы не создавать новый на каждый запрос.
+type gzipPool struct {
+	mu   sync.Mutex
+	free []*gzip.Writer
 }
 
+func newGzipPool() *gzipPool {
+	return &gzipPool{}
+}
+
+func (p *gzipPool) get(w http.ResponseWriter) *gzip.Writer {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if len(p.free) == 0 {
+		// gzip.BestSpeed (=1) — сжимает быстрее, но хуже (больше итоговый размер);
+		// gzip.BestCompression (=9) — сжимает медленнее, но сильнее (меньше итоговый размер);
+		// gzip.DefaultCompression (=-1) — компромисс, то же самое что использует NewWriter.
+		newZw, _ := gzip.NewWriterLevel(w, gzip.BestSpeed)
+		return newZw
+	}
+
+	gz := p.free[len(p.free)-1]     // берем
+	p.free = p.free[:len(p.free)-1] // удаляет
+	gz.Reset(w)                     // очистка внутреннего состояния самого объекта gz
+	return gz
+}
+
+func (p *gzipPool) put(gz *gzip.Writer) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.free = append(p.free, gz)
+}
+
+// compressWriter оборачивает http.ResponseWriter и сжимает ответ в gzip.
+type compressWriter struct {
+	w    http.ResponseWriter
+	zw   *gzip.Writer
+	pool *gzipPool
+}
+
+var gzPool = newGzipPool()
+
 func newCompressWriter(w http.ResponseWriter) *compressWriter {
+	zw := gzPool.get(w)
+
 	return &compressWriter{
-		w:  w,
-		zw: gzip.NewWriter(w),
+		w:    w,
+		zw:   zw,
+		pool: gzPool,
 	}
 }
 
@@ -40,11 +82,14 @@ func (c *compressWriter) Write(p []byte) (int, error) {
 
 func (c *compressWriter) Close() error {
 	if c.Header().Get("Content-Encoding") == "gzip" {
-		return c.zw.Close()
+		err := c.zw.Close()
+		c.pool.put(c.zw)
+		return err
 	}
 	return nil
 }
 
+// compressReader оборачивает io.ReadCloser и распаковывает gzip при чтении.
 type compressReader struct {
 	r  io.ReadCloser
 	zr *gzip.Reader
@@ -73,6 +118,13 @@ func (c *compressReader) Close() error {
 	return c.zr.Close()
 }
 
+// GzipCompress - middleware, сжимающее тело запроса и ответа в gzip,
+// если клиент это поддерживает.
+//
+// Пример использования:
+//
+//	r := chi.NewRouter()
+//	r.Use(middleware.GzipCompress)
 func GzipCompress(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

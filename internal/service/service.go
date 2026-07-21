@@ -12,26 +12,27 @@ import (
 
 type Service struct {
 	repository repository.Repository
+	cfg        *config.Options
 }
 
-func NewService(repo repository.Repository) *Service {
-	return &Service{repository: repo}
+func NewService(repo repository.Repository, cfg *config.Options) *Service {
+	return &Service{repo, cfg}
 }
 
 func (s *Service) Get(ctx context.Context, key string) (string, error) {
 	return s.repository.Get(ctx, key)
 }
 
-func (s *Service) GetAll(ctx context.Context, userID string) ([]model.JSONGetAllResp, error) {
+func (s *Service) GetAll(ctx context.Context, userID string) ([]model.GetAllResp, error) {
 	urls, err := s.repository.GetAll(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	results := []model.JSONGetAllResp{}
+	results := []model.GetAllResp{}
 
 	for i := range urls {
-		results = append(results, model.JSONGetAllResp{
-			ShortURL:    config.Envs.BaseURL + "/" + urls[i]["key"],
+		results = append(results, model.GetAllResp{
+			ShortURL:    s.cfg.BaseURL + "/" + urls[i]["key"],
 			OriginalURL: urls[i]["url"],
 		})
 	}
@@ -53,29 +54,28 @@ func (s *Service) Save(ctx context.Context, url string, userID string) (string, 
 	return savedKey, true, nil
 }
 
-func (s *Service) BatchSave(ctx context.Context, batch []model.JSONBatchReq, userID string) ([]model.JSONBatchResp, error) {
-	results := make([]model.JSONBatchResp, 0)
-	hasConflict := false
+// func (s *Service) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+// 	results := make([]model.BatchResp, len(batch))
+// 	prefix := s.cfg.BaseURL + "/"
 
-	for _, v := range batch {
-		key := utils.GenerateUUID()
-		savedKey, err := s.repository.Save(ctx, key, v.OriginalURL, userID)
-		if errors.Is(err, repository.ErrConflict) {
-			hasConflict = true
-		}
-		if err != nil && !errors.Is(err, repository.ErrConflict) {
-			return nil, err
-		}
+// 	for i, v := range batch {
+// 		key := utils.GenerateUUID()
+// 		savedKey, err := s.repository.Save(ctx, key, v.OriginalURL, userID)
 
-		results = append(results, model.JSONBatchResp{
-			CorrelationID: v.CorrelationID,
-			ShortURL:      config.Envs.BaseURL + "/" + savedKey,
-		})
-	}
-	if hasConflict {
-		return results, repository.ErrConflict
-	}
-	return results, nil
+// 		if err != nil && !errors.Is(err, repository.ErrConflict) {
+// 			return nil, err
+// 		}
+
+// 		results[i] = model.BatchResp{
+// 			CorrelationID: v.CorrelationID,
+// 			ShortURL:      prefix + savedKey,
+// 		}
+// 	}
+// 	return results, nil
+// }
+
+func (s *Service) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
+	return s.repository.BatchSave(ctx, batch, s.cfg.BaseURL, userID)
 }
 
 func (s *Service) BatchDelete(ctx context.Context, keys []string, userID string) error {

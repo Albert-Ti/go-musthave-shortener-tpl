@@ -1,15 +1,19 @@
 package repository
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"os"
+
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 )
 
-type FileStorage struct {
-	element *os.File
+type fileStorage struct {
+	file    *os.File
 	encoder *json.Encoder
 	urls    []map[string]string
 }
@@ -20,7 +24,7 @@ type filRecord struct {
 	OriginalURL string `json:"original_url"`
 }
 
-func NewFileStorage(path string) (*FileStorage, error) {
+func NewFileStorage(path string) (*fileStorage, error) {
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, err
@@ -45,23 +49,23 @@ func NewFileStorage(path string) (*FileStorage, error) {
 		})
 	}
 
-	return &FileStorage{
+	return &fileStorage{
 		urls:    urls,
-		element: file,
+		file:    file,
 		encoder: json.NewEncoder(file),
 	}, nil
 }
 
-func (fs *FileStorage) Get(ctx context.Context, key string) (string, error) {
+func (fs *fileStorage) Get(ctx context.Context, key string) (string, error) {
 	for i := range fs.urls {
 		if fs.urls[i]["key"] == key {
 			return fs.urls[i]["url"], nil
 		}
 	}
-	return "", errors.New("No Content")
+	return "", errors.New("no Content")
 }
 
-func (fs *FileStorage) GetAll(ctx context.Context, userID string) ([]map[string]string, error) {
+func (fs *fileStorage) GetAll(ctx context.Context, userID string) ([]map[string]string, error) {
 	var results = make([]map[string]string, 0)
 
 	for i := range fs.urls {
@@ -73,7 +77,9 @@ func (fs *FileStorage) GetAll(ctx context.Context, userID string) ([]map[string]
 	return results, nil
 }
 
-func (fs *FileStorage) Save(ctx context.Context, key string, url string, userID string) (string, error) {
+func (fs *fileStorage) Save(ctx context.Context, key string, url string, userID string) (string, error) {
+	snapshot := fs.saveMemento()
+
 	record := &filRecord{
 		Uuid:        len(fs.urls) + 1,
 		ShortURL:    key,
@@ -87,20 +93,78 @@ func (fs *FileStorage) Save(ctx context.Context, key string, url string, userID 
 	})
 
 	if err := fs.encoder.Encode(&record); err != nil {
+		fs.restore(snapshot)
 		return "", err
 	}
 
 	return key, nil
 }
 
-func (fs *FileStorage) BatchDelete(ctx context.Context, keys []string, userID string) error {
+func (fs *fileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, baseURL string, userID string) ([]model.BatchResp, error) {
+	snapshot := fs.saveMemento()
+	result := make([]model.BatchResp, len(batch))
+
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+
+	for i, v := range batch {
+		key := utils.GenerateUUID()
+
+		record := &filRecord{
+			Uuid:        len(fs.urls) + 1,
+			ShortURL:    key,
+			OriginalURL: v.OriginalURL,
+		}
+
+		fs.urls = append(fs.urls, map[string]string{
+			"key":     key,
+			"url":     v.OriginalURL,
+			"user_id": userID,
+		})
+
+		if err := encoder.Encode(record); err != nil {
+			fs.restore(snapshot)
+			return nil, err
+		}
+
+		result[i] = model.BatchResp{
+			CorrelationID: v.CorrelationID,
+			ShortURL:      baseURL + "/" + key,
+		}
+	}
+
+	// пишем только тогда, когда все успешно закодировано(откат для файла)
+	if _, err := fs.file.Write(buf.Bytes()); err != nil {
+		fs.restore(snapshot)
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (fs *fileStorage) BatchDelete(ctx context.Context, keys []string, userID string) error {
 	return nil
 }
 
-func (u *FileStorage) Close() error {
-	return u.element.Close()
+func (u *fileStorage) Close() error {
+	return u.file.Close()
 }
 
-func (u *FileStorage) Ping(ctx context.Context) error {
+func (u *fileStorage) Ping(ctx context.Context) error {
 	return nil
+}
+
+// pattern Memento(Хранитель)
+type memento struct {
+	state int
+}
+
+func (fs *fileStorage) saveMemento() *memento {
+	return &memento{
+		state: len(fs.urls),
+	}
+}
+
+func (fs *fileStorage) restore(m *memento) {
+	fs.urls = fs.urls[:m.state]
 }

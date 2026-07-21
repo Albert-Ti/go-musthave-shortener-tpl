@@ -6,13 +6,13 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/validator"
 )
 
-func CreateShortenURL(svc *service.Service) http.HandlerFunc {
+func CreateShortenURL(svc *service.Service, auditor *audit.Auditor, baseURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -49,7 +49,7 @@ func CreateShortenURL(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
-		fullURL := fmt.Sprintf("%s/%s", config.Envs.BaseURL, keyURL)
+		fullURL := fmt.Sprintf("%s/%s", baseURL, keyURL)
 		w.Header().Set("Content-type", "text/plain; charset=utf-8")
 
 		if !isNew {
@@ -59,5 +59,9 @@ func CreateShortenURL(svc *service.Service) http.HandlerFunc {
 		}
 
 		w.Write([]byte(fullURL))
+
+		if auditor != nil {
+			auditor.AddLog(r.Method, r.RequestURI, userID, baseURL)
+		}
 	}
 }

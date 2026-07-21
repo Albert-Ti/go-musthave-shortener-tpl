@@ -1,18 +1,23 @@
-package handler
+package handler_test
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
@@ -22,28 +27,75 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// ExampleCreateShortenURLJSON демонстрирует создание короткой ссылки через JSON API
+// (POST /api/shorten). Возвращает объект model.JSONResp.
+func ExampleCreateShortenURLJSON() {
+	dir, err := os.MkdirTemp("", "example")
+	if err != nil {
+		panic(err)
+	}
+
+	cfg := config.NewOptions(
+		config.WithFileStoragePath(filepath.Join(dir, "example.json")),
+		config.WithBaseURL("http://localhost:8080"),
+	)
+
+	repo, err := repository.NewRepository(cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	svc := service.NewService(repo, config.NewOptions(config.WithBaseURL("http://localhost:8080")))
+	auditor, _ := audit.NewAuditor("", "")
+
+	defer utils.GenerateMockUUID()()
+
+	reqBody, _ := json.Marshal(model.JSONReq{URL: "https://yandex.ru"})
+
+	req := httptest.NewRequestWithContext(
+		context.WithValue(context.Background(),
+			middleware.UserIDKey, "123"),
+		http.MethodPost,
+		"/api/shorten",
+		bytes.NewReader(reqBody),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+
+	handler.CreateShortenURLJSON(svc, auditor, "http://localhost:8080")(rr, req)
+
+	fmt.Println(rr.Code)
+	fmt.Println(strings.TrimSpace(rr.Body.String()))
+
+	// Output:
+	// 201
+	// {"result":"http://localhost:8080/key_1"}
+}
+
 func TestCreateShortURLJSON(t *testing.T) {
 	tmpDir := t.TempDir()
-	config.Envs.FileStoragePath = filepath.Join(tmpDir, "test.json")
-
-	repo, e := repository.NewRepository()
+	cfg := config.NewOptions(
+		config.WithFileStoragePath(filepath.Join(tmpDir, "test.json")),
+	)
+	repo, e := repository.NewRepository(cfg)
 	if e != nil {
 		panic(e)
 	}
 	defer repo.Close()
 
-	svc := service.NewService(repo)
+	svc := service.NewService(repo, cfg)
+	auditor, _ := audit.NewAuditor("", "")
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), middleware.UserIDKey, "123")
 		r = r.WithContext(ctx)
-		CreateShortenURLJSON(svc)(w, r)
+		handler.CreateShortenURLJSON(svc, auditor, cfg.BaseURL)(w, r)
 	})
 
 	srv := httptest.NewServer(middleware.GzipCompress(handler))
 	defer srv.Close()
 
-	config.Envs.BaseURL = srv.URL
+	cfg.BaseURL = srv.URL
 
 	defer utils.GenerateMockUUID()()
 

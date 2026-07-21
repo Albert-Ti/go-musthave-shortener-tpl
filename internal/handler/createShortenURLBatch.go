@@ -24,7 +24,7 @@ func CreateShortenURLBatch(svc *service.Service) http.HandlerFunc {
 			return
 		}
 
-		var dec []model.JSONBatchReq
+		var dec []model.BatchReq
 		if err := json.NewDecoder(r.Body).Decode(&dec); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

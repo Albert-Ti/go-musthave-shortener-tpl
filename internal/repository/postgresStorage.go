@@ -2,20 +2,36 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"time"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var ErrConflict error = errors.New("URL is already exist")
 var ErrStatusGone error = errors.New("URL deleted")
+var ErrNoRows error = errors.New("URL no rows")
 
 type PostgresStorage struct {
 	pool *pgxpool.Pool
 }
 
 func NewPostgresStorage(dsn string) (*PostgresStorage, error) {
-	pool, err := pgxpool.New(context.Background(), dsn)
+	poolCfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	poolCfg.MinConns = 4                       // держим минимум 4 живых соединения постоянно
+	poolCfg.MaxConns = 20                      // верхний предел под нагрузку
+	poolCfg.MaxConnIdleTime = 5 * time.Minute  // не закрывать соединения слишком агрессивно
+	poolCfg.MaxConnLifetime = 30 * time.Minute // периодическая ротация соединений (защита от "протухания")
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), poolCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -32,6 +48,9 @@ func (ps *PostgresStorage) Get(ctx context.Context, key string) (string, error) 
 	queryStr := `SELECT url, is_deleted FROM shorten_url WHERE key = $1`
 	err := ps.pool.QueryRow(ctx, queryStr, key).Scan(&url, &isDeleted)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrNoRows
+		}
 		return "", err
 	}
 	if isDeleted {
@@ -91,6 +110,53 @@ func (ps *PostgresStorage) Save(ctx context.Context, key string, url string, use
 	}
 
 	return key, nil
+}
+
+func (ps *PostgresStorage) BatchSave(ctx context.Context, items []model.BatchReq, baseURL string, userID string) ([]model.BatchResp, error) {
+	results := make([]model.BatchResp, len(items))
+
+	queryStr := `
+		WITH temp AS (
+			INSERT INTO shorten_url (key, url, user_id)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (url) DO NOTHING
+			RETURNING key
+		)
+		SELECT key
+		FROM temp
+
+		UNION ALL
+
+		SELECT key
+		FROM shorten_url
+		WHERE url = $2
+			AND NOT EXISTS (SELECT 1 FROM temp)
+		LIMIT 1;
+  `
+	batch := &pgx.Batch{}
+
+	for _, v := range items {
+		key := utils.GenerateUUID()
+		batch.Queue(queryStr, key, v.OriginalURL, userID)
+	}
+
+	br := ps.pool.SendBatch(ctx, batch)
+	defer br.Close()
+
+	for i, v := range items {
+		var returnedKey string
+
+		if err := br.QueryRow().Scan(&returnedKey); err != nil {
+			return nil, err
+		}
+
+		results[i] = model.BatchResp{
+			CorrelationID: v.CorrelationID,
+			ShortURL:      baseURL + "/" + returnedKey,
+		}
+	}
+
+	return results, nil
 }
 
 func (ps *PostgresStorage) BatchDelete(ctx context.Context, keys []string, userID string) error {
