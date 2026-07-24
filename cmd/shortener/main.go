@@ -17,6 +17,8 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 )
 
+//go:generate go run ../reset
+
 func main() {
 	cfg := config.Build()
 	repo, errRepo := repository.NewRepository(cfg)

@@ -16,6 +16,7 @@ type Observer interface {
 }
 
 // AuditLog - запись аудита одного запроса.
+// generate:reset
 type AuditLog struct {
 	TS     int64  `json:"ts"`
 	Action string `json:"action"`
