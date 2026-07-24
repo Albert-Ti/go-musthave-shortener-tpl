@@ -26,6 +26,7 @@ type AuditLog struct {
 
 // Auditor рассылает записи аудита подписанным наблюдателям (observer)
 // через буферизованный канал, не блокируя обработку HTTP-запроса.
+// generate:reset
 type Auditor struct {
 	ch       chan AuditLog
 	action   map[string]string

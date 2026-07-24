@@ -8,6 +8,7 @@ import (
 
 // Options хранит настройки приложения, собранные из флагов командной строки,
 // переменных окружения и значений по умолчанию.
+// generate:reset
 type Options struct {
 	RunAddr         string
 	BaseURL         string

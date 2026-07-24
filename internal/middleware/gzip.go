@@ -10,6 +10,7 @@ import (
 )
 
 // gzipPool переиспользует *gzip.Writer, чтобы не создавать новый на каждый запрос.
+// generate:reset
 type gzipPool struct {
 	mu   sync.Mutex
 	free []*gzip.Writer

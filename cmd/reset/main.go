@@ -7,23 +7,27 @@ import (
 	"go/ast"
 	"go/format"
 	"go/token"
-	"html/template"
 	"os"
 	"strings"
+	"text/template"
 
 	"golang.org/x/tools/go/packages"
 )
 
-type templateStruct struct {
+type packageData struct {
 	Package string
 	Path    string
+	Structs []structData
+}
+
+type structData struct {
 	Type    string
 	Entries []templateEntry
 }
 
 type templateEntry struct {
 	Name      string
-	typeValue any
+	TypeValue any
 }
 
 const templateStr = `
@@ -31,9 +35,31 @@ const templateStr = `
 
 package {{.Package}}
 
-
+{{- range .Structs}}
 func (t *{{.Type}}) Reset() {
+	if t == nil {
+		return
+	}
+
+	{{range .Entries}}
+	{{- if eq .TypeValue "int" "int8" "int16" "int32" "int64" "uint" "uint8" "uint16" "uint32" "uint64"}}
+	t.{{.Name}} = 0
+	{{- else if eq .TypeValue "string"}}
+	t.{{.Name}} = ""
+	{{- else if eq .TypeValue "bool"}}
+	t.{{.Name}} = false
+	{{- else if eq .TypeValue "map"}}
+	t.{{.Name}} = nil
+	{{- else if eq .TypeValue "slice"}}
+	t.{{.Name}} = t.{{.Name}}[:0]
+	{{- else if eq .TypeValue "pointer"}}
+	t.{{.Name}} = nil
+	{{- else if eq .TypeValue "unknown"}}
+	// Сложный тип t.{{.Name}}
+	{{- end}}
+	{{- end}}
 }
+{{- end}}
 `
 
 func main() {
@@ -50,10 +76,9 @@ func main() {
 		panic(err)
 	}
 
-	templateStruct := templateStruct{}
-	entries := []templateEntry{}
-
+	packageData := packageData{}
 	for _, pkg := range pkgs {
+
 		for _, file := range pkg.Syntax {
 			for _, decls := range file.Decls {
 				genDecl, ok := decls.(*ast.GenDecl)
@@ -65,59 +90,79 @@ func main() {
 				}
 				for _, spec := range genDecl.Specs {
 					typeSpec, ok := spec.(*ast.TypeSpec)
+					fmt.Println()
 					if !ok {
 						continue
 					}
 					if strings.Contains(genDecl.Doc.Text(), "generate:reset") {
 
-						templateStruct.Package = pkg.Name
-						templateStruct.Type = typeSpec.Name.Name
-						templateStruct.Path = pkg.Dir
+						packageData.Package = pkg.Name
+						packageData.Path = pkg.Dir
+
+						entries := []templateEntry{}
 						if structType, ok := typeSpec.Type.(*ast.StructType); ok {
 							for _, field := range structType.Fields.List {
 								if len(field.Names) > 0 {
 									entries = append(entries, templateEntry{
 										Name:      field.Names[0].Name,
-										typeValue: getFieldType(field),
+										TypeValue: getFieldType(field),
 									})
 								}
 							}
 						}
+						packageData.Structs = append(packageData.Structs, structData{
+							Type:    typeSpec.Name.Name,
+							Entries: entries,
+						})
+
+						fname := "reset.gen.go"
+
+						// генерируем код по шаблону
+						tmpl, err := template.New("reset").Parse(templateStr)
+						if err != nil {
+							panic(err)
+						}
+
+						var buf bytes.Buffer
+						err = tmpl.Execute(&buf, packageData)
+						if err != nil {
+							panic(err)
+						}
+
+						// форматируем код
+						bufFmt, err := format.Source(buf.Bytes())
+						if err != nil {
+							panic(err)
+						}
+
+						// записываем сгенерированный код в файл
+						err = os.WriteFile(packageData.Path+"/"+fname, bufFmt, 0644)
+						if err != nil {
+							panic(err)
+						}
+
 					}
 				}
+
 			}
+			packageData.Structs = packageData.Structs[:0]
 		}
+
 	}
 
-	templateStruct.Entries = entries
-	fname := "reset.gen.go"
-
-	// генерируем код по шаблону
-	tmpl, err := template.New("reset").Parse(templateStr)
-	if err != nil {
-		panic(err)
-	}
-
-	var buf bytes.Buffer
-	err = tmpl.Execute(&buf, templateStruct)
-	if err != nil {
-		panic(err)
-	}
-
-	// форматируем код
-	bufFmt, err := format.Source(buf.Bytes())
-	if err != nil {
-		panic(err)
-	}
-
-	// записываем сгенерированный код в файл
-	err = os.WriteFile(templateStruct.Path+"/"+fname, bufFmt, 0644)
-	if err != nil {
-		panic(err)
-	}
 }
 
 func getFieldType(field *ast.Field) string {
-	it := field.Type.(*ast.Ident)
-	return it.String()
+	switch t := field.Type.(type) {
+	case *ast.Ident:
+		return t.Name
+	case *ast.StarExpr:
+		return "pointer"
+	case *ast.ArrayType:
+		return "slice"
+	case *ast.MapType:
+		return "map"
+	default:
+		return "unknown"
+	}
 }

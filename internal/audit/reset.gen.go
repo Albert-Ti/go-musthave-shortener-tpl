@@ -3,4 +3,21 @@
 package audit
 
 func (t *AuditLog) Reset() {
+	if t == nil {
+		return
+	}
+
+	t.TS = 0
+	t.Action = ""
+	t.UserID = ""
+	t.URL = ""
+}
+func (t *Auditor) Reset() {
+	if t == nil {
+		return
+	}
+
+	// Сложный тип t.ch
+	t.action = nil
+	t.observer = t.observer[:0]
 }

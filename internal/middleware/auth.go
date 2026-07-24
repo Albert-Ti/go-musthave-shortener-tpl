@@ -18,6 +18,7 @@ const UserIDKey UserIDType = "userID"
 
 // MyCustomClaims расширяет стандартные claims jwt.RegisteredClaims полем UserID,
 // чтобы связать выданный токен с конкретным пользователем сервиса.
+// generate:reset
 type MyCustomClaims struct {
 	jwt.RegisteredClaims
 	UserID string
