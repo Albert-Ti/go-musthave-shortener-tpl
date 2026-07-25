@@ -15,8 +15,8 @@ type Observer interface {
 	Notify(log AuditLog)
 }
 
-// AuditLog - запись аудита одного запроса.
 // generate:reset
+// AuditLog - запись аудита одного запроса.
 type AuditLog struct {
 	TS     int64  `json:"ts"`
 	Action string `json:"action"`
@@ -24,9 +24,9 @@ type AuditLog struct {
 	URL    string `json:"url"`
 }
 
+// generate:reset
 // Auditor рассылает записи аудита подписанным наблюдателям (observer)
 // через буферизованный канал, не блокируя обработку HTTP-запроса.
-// generate:reset
 type Auditor struct {
 	ch       chan AuditLog
 	action   map[string]string

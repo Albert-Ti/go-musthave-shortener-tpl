@@ -2,6 +2,21 @@
 
 package middleware
 
+func (t *MyCustomClaims) Reset() {
+	if t == nil {
+		return
+	}
+
+	t.UserID = ""
+}
+func (t *gzipPool) Reset() {
+	if t == nil {
+		return
+	}
+
+	// Сложный тип t.mu
+	t.free = t.free[:0]
+}
 func (t *responseData) Reset() {
 	if t == nil {
 		return
