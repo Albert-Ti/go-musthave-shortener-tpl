@@ -94,6 +94,7 @@ func TestCreateShortURLJSON(t *testing.T) {
 		handler.CreateShortenURLJSON(svc, auditor, cfg.BaseURL)(w, r)
 	})
 
+	// e2e test
 	srv := httptest.NewServer(middleware.GzipCompress(handler))
 	defer srv.Close()
 
