@@ -112,3 +112,7 @@ analyze:
 # Запуск анализа через файл конфигурации staticcheck.conf
 analyze-conf:
 	staticcheck ./...
+
+# Кодогенерация - просканирует все файлы текущей директории и запустит операции, указанные в комментариях //go:generate.
+generate:
+	go generate ./... 
