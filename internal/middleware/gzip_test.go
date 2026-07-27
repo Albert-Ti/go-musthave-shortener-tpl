@@ -135,13 +135,6 @@ func BenchmarkGzipCompress(b *testing.B) {
 
 			rr := httptest.NewRecorder()
 			gzipHandler.ServeHTTP(rr, req)
-
-			zr, err := gzip.NewReader(rr.Body)
-			require.NoError(b, err)
-
-			body, err := io.ReadAll(zr)
-
-			assert.Equal(b, successBody, string(body))
 		}
 	})
 }

@@ -74,7 +74,6 @@ func (c *compressWriter) Close() error {
 
 // compressReader оборачивает io.ReadCloser и распаковывает gzip при чтении.
 type compressReader struct {
-	r    io.ReadCloser
 	zr   *gzip.Reader
 	pool *pool.Pool[*compressReader]
 }
@@ -83,7 +82,6 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	rp, ok := readerPool.Get()
 
 	if !ok {
-
 		zr, err := gzip.NewReader(r)
 		if err != nil {
 			return nil, err
@@ -95,24 +93,19 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 		}
 	}
 
-	rp.r = r
 	rp.pool = readerPool
 	return rp, nil
 }
 
-func (c compressReader) Read(b []byte) (int, error) {
+func (c *compressReader) Read(b []byte) (int, error) {
 	return c.zr.Read(b)
 }
 
 func (c *compressReader) Reset() {
 	_ = c.zr.Reset(http.NoBody) // безопасная отвязка от старого r
-	c.r = nil
 }
 
 func (c *compressReader) Close() error {
-	if err := c.r.Close(); err != nil {
-		return err
-	}
 	if err := c.zr.Close(); err != nil {
 		return err
 	}
@@ -133,9 +126,15 @@ func GzipCompress(next http.Handler) http.Handler {
 		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
 			cr, err := newCompressReader(r.Body)
 			if err != nil {
-				slog.Error("newCompressReader", "error", err)
+				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
+
+			defer func() {
+				if err := r.Body.Close(); err != nil {
+					slog.Error("Failed to close request body", "error", err)
+				}
+			}()
 
 			r.Body = cr
 			defer func() {
@@ -148,7 +147,7 @@ func GzipCompress(next http.Handler) http.Handler {
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			cw, err := newCompressWriter(w)
 			if err != nil {
-				slog.Error("newCompressWriter", "error", err)
+				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 
