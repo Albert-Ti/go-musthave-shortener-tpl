@@ -38,10 +38,11 @@ func main() {
 	svc := service.NewService(repo, cfg)
 	r := chi.NewRouter()
 
-	auditor, errAudit := audit.NewAuditor(cfg.AuditFile, cfg.AuditURL)
+	auditor, errAudit := audit.NewAuditor(cfg.AuditFile, cfg.AuditURL, 20, 100)
 	if errAudit != nil {
 		panic(errAudit)
 	}
+	defer auditor.Close()
 
 	r.Use(chiMiddleware.RealIP)
 	r.Use(chiMiddleware.Recoverer)

@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -31,6 +33,11 @@ type Auditor struct {
 	ch       chan AuditLog
 	action   map[string]string
 	observer []Observer
+
+	bufSize int
+	workers int
+	wg      sync.WaitGroup
+	active  atomic.Int32
 }
 
 // NewAuditor создаёт Auditor и подписывает на него FileObserver (если задан
@@ -44,17 +51,16 @@ type Auditor struct {
 //	    log.Fatal(err)
 //	}
 //	auditor.AddLog(http.MethodPost, r.RequestURI, userID, baseURL)
-func NewAuditor(auditFile string, auditURL string) (*Auditor, error) {
+func NewAuditor(auditFile string, auditURL string, bufSize int, workers int) (*Auditor, error) {
 	if auditFile == "" && auditURL == "" {
 		return nil, nil
 	}
 
 	auditor := &Auditor{
-		ch:     make(chan AuditLog, 20),
-		action: map[string]string{http.MethodGet: "follow", http.MethodPost: "shorten"},
+		ch:      make(chan AuditLog, bufSize),
+		action:  map[string]string{http.MethodGet: "follow", http.MethodPost: "shorten"},
+		workers: 100,
 	}
-
-	slog.Info("Using Auditor")
 
 	if auditFile != "" {
 		fileObs, err := NewFileObserver(auditFile)
@@ -87,7 +93,6 @@ func (a *Auditor) AddLog(method, requestURI, userID, baseURL string) {
 	select {
 	case a.ch <- log:
 	default:
-		slog.Info("Channel is full")
 	}
 }
 
@@ -96,10 +101,16 @@ func (a *Auditor) subscribe(sub Observer) {
 }
 
 func (a *Auditor) broadcast() {
-	for log := range a.ch {
-		for _, sub := range a.observer {
-			go sub.Notify(log) // Отдельная горутина для каждого наблюдателя
-		}
+	for range a.workers {
+		a.active.Add(1)
+
+		a.wg.Go(func() {
+			for log := range a.ch {
+				for _, sub := range a.observer {
+					sub.Notify(log)
+				}
+			}
+		})
 	}
 }
 
@@ -107,6 +118,8 @@ func (a *Auditor) broadcast() {
 type FileObserver struct {
 	file    *os.File
 	encoder *json.Encoder
+
+	mu sync.Mutex
 }
 
 // NewFileObserver открывает (или создаёт) файл по path для дозаписи логов.
@@ -115,10 +128,13 @@ func NewFileObserver(path string) (*FileObserver, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &FileObserver{file: file, encoder: json.NewEncoder(file)}, nil
+	return &FileObserver{file, json.NewEncoder(file), sync.Mutex{}}, nil
 }
 
 func (f *FileObserver) Notify(log AuditLog) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
 	if err := f.encoder.Encode(&log); err != nil {
 		slog.Error("FileObserver", "encode", err)
 	}
@@ -151,4 +167,9 @@ func (h *HTTPObserver) Notify(log AuditLog) {
 			slog.Error("HTTPObserver", "close", errClose)
 		}
 	}()
+}
+
+func (a *Auditor) Close() {
+	close(a.ch)
+	a.wg.Wait()
 }

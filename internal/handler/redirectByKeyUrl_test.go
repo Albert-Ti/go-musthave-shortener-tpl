@@ -45,7 +45,7 @@ func ExampleRedirectByKeyURL() {
 	_, _ = repo.Save(context.Background(), savedKey, "http://yandex.ru", "user-1")
 
 	svc := service.NewService(repo, config.NewOptions(config.WithBaseURL("http://localhost:8080")))
-	auditor, _ := audit.NewAuditor("", "")
+	auditor, _ := audit.NewAuditor("", "", 20, 100)
 
 	req := httptest.NewRequestWithContext(
 		context.WithValue(context.Background(),
@@ -154,7 +154,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 				nil,
 			)
 			w := httptest.NewRecorder()
-			auditor, _ := audit.NewAuditor("", "")
+			auditor, _ := audit.NewAuditor("", "", 20, 100)
 
 			redirectHandler := handler.RedirectByKeyURL(svc, auditor, cfg.BaseURL)
 			redirectHandler(w, r)

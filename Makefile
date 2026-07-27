@@ -14,7 +14,7 @@ run-file:
 
 # Запуск сервера с Postgres и файлом аудита
 run-pg:
-	go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json"
+	go run -race cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json"
 
 # То же, что run-pg, но с включённым pprof-сервером (MODE=debug)
 run-pg-debug:
@@ -26,7 +26,18 @@ ping:
 
 # Запуск всех тестов
 test:
-	go test ./...
+	go test -race ./...
+
+# Запуск всех бенчмарк тестов
+test-bench:
+	go test -race -bench . -benchmem ./...
+
+# Post запрос теста архивирования
+test-curl-gzip:
+	echo "https://github.com" | gzip | curl -X POST http://localhost:8080/ \
+  -H "Content-Encoding: gzip" \
+  -H "Content-Type: text/plain" \
+  --data-binary @-
 
 # Создание новой миграции: make migrate-create name=my_migration
 migrate-create:

@@ -46,7 +46,7 @@ func ExampleCreateShortenURLJSON() {
 	}
 
 	svc := service.NewService(repo, config.NewOptions(config.WithBaseURL("http://localhost:8080")))
-	auditor, _ := audit.NewAuditor("", "")
+	auditor, _ := audit.NewAuditor("", "", 20, 100)
 
 	defer utils.GenerateMockUUID()()
 
@@ -86,7 +86,7 @@ func TestCreateShortURLJSON(t *testing.T) {
 	}()
 
 	svc := service.NewService(repo, cfg)
-	auditor, _ := audit.NewAuditor("", "")
+	auditor, _ := audit.NewAuditor("", "", 20, 100)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), middleware.UserIDKey, "123")
