@@ -39,6 +39,10 @@ test-curl-gzip:
   -H "Content-Type: text/plain" \
   --data-binary @-
 
+# Нагрузочный тест: 1000 запросов, 10 одновременных соединений
+test-hey:
+	hey -n 1000 -c 10 http://localhost:8080/
+
 # Создание новой миграции: make migrate-create name=my_migration
 migrate-create:
 	@test -n "$(name)" || (echo "Error: name is required. Use: make migrate-create name=my_migration" && exit 1)
@@ -94,10 +98,6 @@ docker-volume-rm:
 mockgen:
 	mockgen -source=internal/repository/repository.go -destination=internal/repository/mocks/mock_repository.go -package=mocks 
 
-# Нагрузочный тест: 1000 запросов, 10 одновременных соединений
-hey:
-	hey -n 1000 -c 10 http://localhost:8080/
-
 # Снять heap-профиль pprof в файл: make pprof-snapshot file_path=profiles/x.pprof
 pprof-snapshot:
 	@test -n "$(file_path)" || (echo "Error: file_path is required. Use: make  file_path=profiles/file_path.pprof" && exit 1)
@@ -112,18 +112,18 @@ pprof-run-web:
 pprof-diff:
 	go tool pprof -top -diff_base=profiles/base.pprof profiles/result.pprof 
 
-# Запустить локальный сервер документации pkgsite на :6000
-pkgsite:
-	pkgsite -http=":6000" .
+# Запустить локальный сервер документации pkgsite на :6000 (Для запуска требуется запуск сервера в режиме MODE=debug)
+docs-pkgsite:
+	pkgsite -open .
 
 # Скомпилировать multichecker.Main и запустить анализ через набор игнорируемых правил staticcheck_ignore.json
-analyze:
+analyze-multichecker:
 	go build -o ./staticlint ./cmd/staticlint/ && ./staticlint ./...
 
 # Запуск анализа через файл конфигурации staticcheck.conf
-analyze-conf:
+analyze-staticcheck:
 	staticcheck ./...
 
 # Кодогенерация - просканирует все файлы текущей директории и запустит операции, указанные в комментариях //go:generate.
-generate:
-	go generate ./... 
+go-generate:
+	go generate ./...

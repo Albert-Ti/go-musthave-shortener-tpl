@@ -47,6 +47,7 @@ func TestGzipCompress(t *testing.T) {
 		require.NoError(t, err)
 
 		body, err := io.ReadAll(zr)
+		require.NoError(t, err)
 
 		assert.Equal(t, successBody, string(body))
 	})

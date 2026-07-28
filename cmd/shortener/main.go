@@ -20,8 +20,8 @@ import (
 //go:generate go run ../reset
 
 func main() {
-	cfg := config.Build()
-	repo, errRepo := repository.NewRepository(cfg)
+	opts := config.Build()
+	repo, errRepo := repository.NewRepository(opts)
 	if errRepo != nil {
 		panic(errRepo)
 	}
@@ -31,14 +31,14 @@ func main() {
 		}
 	}()
 
-	if errMigrate := runMigrations(cfg.DatabaseDSN); errMigrate != nil {
+	if errMigrate := runMigrations(opts.DatabaseDSN); errMigrate != nil {
 		panic(errMigrate)
 	}
 
-	svc := service.NewService(repo, cfg)
+	svc := service.NewService(repo, opts)
 	r := chi.NewRouter()
 
-	auditor, errAudit := audit.NewAuditor(cfg.AuditFile, cfg.AuditURL, 20, 100)
+	auditor, errAudit := audit.NewAuditor(opts.AuditFile, opts.AuditURL, 20, 100)
 	if errAudit != nil {
 		panic(errAudit)
 	}
@@ -48,17 +48,17 @@ func main() {
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(myMiddleware.WithLogging)
 	r.Use(myMiddleware.GzipCompress)
-	r.Use(myMiddleware.AuthGuard(cfg.JWTSecretKey))
+	r.Use(myMiddleware.AuthGuard(opts.JWTSecretKey))
 
-	r.Post("/", handler.CreateShortenURL(svc, auditor, cfg.BaseURL))
-	r.Get("/{id}", handler.RedirectByKeyURL(svc, auditor, cfg.BaseURL))
-	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc, auditor, cfg.BaseURL))
+	r.Post("/", handler.CreateShortenURL(svc, auditor, opts.BaseURL))
+	r.Get("/{id}", handler.RedirectByKeyURL(svc, auditor, opts.BaseURL))
+	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc, auditor, opts.BaseURL))
 	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(svc))
 	r.Get("/api/user/urls", handler.GetShortenURLs(svc))
 	r.Delete("/api/user/urls", handler.DeleteShortenURLs(svc))
 	r.Get("/ping", handler.PingDatabase(svc))
 
-	if cfg.Mode == "debug" {
+	if opts.Mode == config.ModeDebug {
 		slog.Info("Running server pprof", "host", "localhost:6060")
 		go func() {
 			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
@@ -67,8 +67,8 @@ func main() {
 		}()
 	}
 
-	slog.Info("Running server", "host", cfg.RunAddr)
-	errRun := http.ListenAndServe(cfg.RunAddr, r)
+	slog.Info("Running server", "host", opts.RunAddr, "mode", opts.Mode)
+	errRun := http.ListenAndServe(opts.RunAddr, r)
 	if errRun != nil {
 		panic(errRun)
 	}

@@ -95,3 +95,11 @@ BenchmarkGzipCompress/gzip_alloc-10        23913             49226 ns/op        
 
 - Оптимизирован gzip middleware: добавлен sync.Pool для переиспользования gzip.Writer
 - Улучшена работа с пулом соединений PostgreSQL
+
+**Все тесты описанные выше, проводились на машине:**
+
+```bash
+goos: darwin
+goarch: arm64
+cpu: Apple M5
+```

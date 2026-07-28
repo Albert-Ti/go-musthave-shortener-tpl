@@ -6,6 +6,12 @@ import (
 	"os"
 )
 
+const (
+	ModeDev   = "dev"
+	ModeDebug = "debug"
+	ModeProd  = "prod"
+)
+
 // Options хранит настройки приложения, собранные из флагов командной строки,
 // переменных окружения и значений по умолчанию.
 // generate:reset
@@ -34,7 +40,7 @@ func NewOptions(opts ...func(*Options)) *Options {
 		RunAddr:      "localhost:8080",
 		BaseURL:      "http://localhost:8080",
 		JWTSecretKey: "jwt_secret_key",
-		Mode:         "dev",
+		Mode:         ModeDev,
 	}
 
 	for _, opt := range opts {

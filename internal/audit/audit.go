@@ -17,8 +17,8 @@ type Observer interface {
 	Notify(log AuditLog)
 }
 
+// AuditLog запись аудита одного запроса.
 // generate:reset
-// AuditLog - запись аудита одного запроса.
 type AuditLog struct {
 	TS     int64  `json:"ts"`
 	Action string `json:"action"`
@@ -26,9 +26,9 @@ type AuditLog struct {
 	URL    string `json:"url"`
 }
 
-// generate:reset
 // Auditor рассылает записи аудита подписанным наблюдателям (observer)
 // через буферизованный канал, не блокируя обработку HTTP-запроса.
+// generate:reset
 type Auditor struct {
 	ch       chan AuditLog
 	action   map[string]string
@@ -46,11 +46,11 @@ type Auditor struct {
 //
 // Пример использования:
 //
-//	auditor, err := audit.NewAuditor(cfg.AuditFile, cfg.AuditURL)
+//	auditor, err := audit.NewAuditor("audit.json", "http...")
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-//	auditor.AddLog(http.MethodPost, r.RequestURI, userID, baseURL)
+//	auditor.AddLog(http.MethodPost, r.RequestURI, "user-1", "http://localhost:8080")
 func NewAuditor(auditFile string, auditURL string, bufSize int, workers int) (*Auditor, error) {
 	if auditFile == "" && auditURL == "" {
 		return nil, nil
@@ -96,10 +96,12 @@ func (a *Auditor) AddLog(method, requestURI, userID, baseURL string) {
 	}
 }
 
+// subscribe - добавляет новых наблюдателей.
 func (a *Auditor) subscribe(sub Observer) {
 	a.observer = append(a.observer, sub)
 }
 
+// broadcast - рассылает логи существующим наблюдателям.
 func (a *Auditor) broadcast() {
 	for range a.workers {
 		a.active.Add(1)
@@ -131,6 +133,7 @@ func NewFileObserver(path string) (*FileObserver, error) {
 	return &FileObserver{file, json.NewEncoder(file), sync.Mutex{}}, nil
 }
 
+// Notify - функция FileObserver кодировки и записи в файл логов.
 func (f *FileObserver) Notify(log AuditLog) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -150,6 +153,7 @@ func NewHTTPObserver(url string) *HTTPObserver {
 	return &HTTPObserver{url}
 }
 
+// Notify - функция HTTPObserver отправки пост логов запроса на сторонний сервер.
 func (h *HTTPObserver) Notify(log AuditLog) {
 	b, err := json.Marshal(log)
 	if err != nil {
