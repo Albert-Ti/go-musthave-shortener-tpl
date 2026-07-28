@@ -9,6 +9,7 @@ func (t *MyCustomClaims) Reset() {
 
 	t.UserID = ""
 }
+
 func (t *responseData) Reset() {
 	if t == nil {
 		return

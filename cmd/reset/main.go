@@ -60,7 +60,7 @@ func (t *{{.Type}}) Reset() {
 	{{- end}}
 	{{- end}}
 }
-{{- end}}
+{{end}}
 `
 
 func main() {

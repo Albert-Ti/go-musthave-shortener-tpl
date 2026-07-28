@@ -59,7 +59,7 @@ func NewAuditor(auditFile string, auditURL string, bufSize int, workers int) (*A
 	auditor := &Auditor{
 		ch:      make(chan AuditLog, bufSize),
 		action:  map[string]string{http.MethodGet: "follow", http.MethodPost: "shorten"},
-		workers: 100,
+		workers: workers,
 	}
 
 	if auditFile != "" {

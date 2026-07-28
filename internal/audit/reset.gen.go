@@ -12,6 +12,7 @@ func (t *AuditLog) Reset() {
 	t.UserID = ""
 	t.URL = ""
 }
+
 func (t *Auditor) Reset() {
 	if t == nil {
 		return
@@ -20,4 +21,8 @@ func (t *Auditor) Reset() {
 	// Сложный тип t.ch
 	t.action = nil
 	t.observer = t.observer[:0]
+	t.bufSize = 0
+	t.workers = 0
+	// Сложный тип t.wg
+	// Сложный тип t.active
 }
