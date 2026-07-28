@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 
+	_ "embed"
 	_ "net/http/pprof"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
@@ -17,9 +19,18 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 //go:generate go run ../reset
 
 func main() {
+	fmt.Printf("\n  Build version: %s\n  Build date: %s\n  Build commit: %s\n \n",
+		buildVersion, buildDate, buildCommit)
+
 	opts := config.Build()
 	repo, errRepo := repository.NewRepository(opts)
 	if errRepo != nil {
@@ -68,6 +79,7 @@ func main() {
 	}
 
 	slog.Info("Running server", "host", opts.RunAddr, "mode", opts.Mode)
+
 	errRun := http.ListenAndServe(opts.RunAddr, r)
 	if errRun != nil {
 		panic(errRun)

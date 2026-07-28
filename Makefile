@@ -1,6 +1,8 @@
 DB_URL = postgres://postgres:postgres@localhost:5432/db?sslmode=disable
 MIGRATIONS_PATH = ./migrations
 PPROF_FILE_PATH = profiles/base.pprof
+BUILD_DATE := $(shell date +'%Y-%m-%d_%H:%M:%S')
+BUILD_COMMIT := $(shell git rev-parse --short HEAD)
 
 .PHONY: run ping test migrate-up migrate-down migrate-create
 
@@ -18,7 +20,16 @@ run-pg:
 
 # То же, что run-pg, но с включённым pprof-сервером (MODE=debug)
 run-pg-debug:
-	export MODE=debug && go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json"
+	export MODE=debug && \
+	go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json"
+
+run-pg-ldflags:
+	go run -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$(BUILD_DATE) -X 'main.buildCommit=$(BUILD_COMMIT)'" \
+		cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json"
+
+# Сборка с передачей значений
+build-ldflags:
+	go build -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$(BUILD_DATE) -X 'main.buildCommit=$(BUILD_COMMIT)'" -o shortener cmd/shortener/main.go
 
 # Проверка доступности сервера
 ping:

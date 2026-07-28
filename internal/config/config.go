@@ -120,6 +120,5 @@ func Build() *Options {
 		WithDatabaseDSN(dsn),
 		WithAuditFile(pick("audit-file", raw.AuditFile, "AUDIT_FILE")),
 		WithAuditURL(pick("audit-url", raw.AuditURL, "AUDIT_URL")),
-		WithMode(pick("m", raw.Mode, "MODE")),
 	)
 }
