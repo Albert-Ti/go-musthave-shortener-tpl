@@ -12,4 +12,6 @@ type ResetableStruct struct {
 	sP    *[]int
 	mP    *map[string]int
 	child *ResetableStruct
+
+	ch chan string
 }

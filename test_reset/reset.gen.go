@@ -11,7 +11,6 @@ func (t *ResetableStruct) Reset() {
 	t.str = ""
 	t.s = t.s[:0]
 	clear(t.m)
-
 	if t.iP != nil {
 		*t.iP = 0
 	}
@@ -24,5 +23,9 @@ func (t *ResetableStruct) Reset() {
 	if t.mP != nil {
 		clear(*t.mP)
 	}
-	// Сложный тип t.child
+	if t.child != nil {
+		if resetter, ok := any(t.child).(interface{ Reset() }); ok {
+			resetter.Reset()
+		}
+	}
 }

@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"flag"
-	"fmt"
 	"go/ast"
 	"go/format"
 	"go/token"
@@ -27,9 +26,14 @@ type structData struct {
 }
 
 type templateEntry struct {
-	Name      string
-	TypeValue string
-	isPointer bool
+	Name  string
+	Field fieldInfo
+}
+
+type fieldInfo struct {
+	Kind  string
+	Type  string
+	IsPtr bool
 }
 
 const templateStr = `
@@ -37,44 +41,50 @@ const templateStr = `
 
 package {{.Package}}
 
-{{- range .Structs}}
+{{range .Structs}}
 func (t *{{.Type}}) Reset() {
 	if t == nil {
 		return
 	}
 
 	{{range .Entries}}
-	{{- if eq .TypeValue "int" "int8" "int16" "int32" "int64" "uint" "uint8" "uint16" "uint32" "uint64"}}
-	t.{{.Name}} = 0
-	{{- else if eq .TypeValue "string"}}
-	t.{{.Name}} = ""
-	{{- else if eq .TypeValue "bool"}}
-	t.{{.Name}} = false
-	{{- else if eq .TypeValue "map"}}
-	clear(t.{{.Name}})
-	{{else if eq .TypeValue "slice"}}
-	t.{{.Name}} = t.{{.Name}}[:0]
-
-	{{- else if eq .TypeValue "pointer:int"}}
+	{{- if .Field.IsPtr}}
 	if t.{{.Name}} != nil {
-    *t.{{.Name}} = 0
-	}
-	{{- else if eq .TypeValue "pointer:string"}}
-	if t.{{.Name}} != nil {
-    *t.{{.Name}} = ""
-	}
-	{{- else if eq .TypeValue "pointer:map"}}
-	if t.{{.Name}} != nil {
-    clear(*t.{{.Name}})
-	}
-	{{- else if eq .TypeValue "pointer:slice"}}
-	if t.{{.Name}} != nil {
-    *t.{{.Name}} = (*t.{{.Name}})[:0]
+		{{- if eq .Field.Kind "int" "int8" "int16" "int32" "int64" "uint" "uint8" "uint16" "uint32" "uint64"}}
+		*t.{{.Name}} = 0
+		{{- else if eq .Field.Kind "string"}}
+		*t.{{.Name}} = ""
+		{{- else if eq .Field.Kind "map"}}
+		clear(*t.{{.Name}})
+		{{- else if eq .Field.Kind "slice"}}
+		*t.{{.Name}} = (*t.{{.Name}})[:0]
+		{{- else if eq .Field.Kind "struct"}}
+		if resetter, ok := any(t.{{.Name}}).(interface{ Reset() }); ok {
+			resetter.Reset()
+		}
+		{{- else}}
+		{{end}}
 	}
 
-	{{- else if eq .TypeValue "unknown"}}
-	// Сложный тип t.{{.Name}}
-	{{- end}}
+	{{- else}}
+		{{- if eq .Field.Kind "int" "int8" "int16" "int32" "int64" "uint" "uint8" "uint16" "uint32" "uint64"}}
+		t.{{.Name}} = 0
+		{{- else if eq .Field.Kind "string"}}
+		t.{{.Name}} = ""
+		{{- else if eq .Field.Kind "bool"}}
+		t.{{.Name}} = false
+		{{- else if eq .Field.Kind "map"}}
+		clear(t.{{.Name}})
+		{{- else if eq .Field.Kind "slice"}}
+		t.{{.Name}} = t.{{.Name}}[:0]
+		{{- else if eq .Field.Kind "struct"}}
+		if resetter, ok := any(&t.{{.Name}}).(interface{ Reset() }); ok {
+			resetter.Reset()
+		}
+		{{- else}}
+		{{- end}}
+
+		{{- end}}
 	{{- end}}
 }
 {{end}}
@@ -126,8 +136,8 @@ func main() {
 					for _, field := range structType.Fields.List {
 						for _, name := range field.Names { // ВСЕ имена, не только [0]
 							entries = append(entries, templateEntry{
-								Name:      name.Name,
-								TypeValue: getFieldType(field.Type),
+								Name:  name.Name,
+								Field: getFieldInfo(field.Type),
 							})
 						}
 					}
@@ -175,18 +185,35 @@ func packageDir(pkg *packages.Package) string {
 	return ""
 }
 
-func getFieldType(expr ast.Expr) string {
+func getFieldInfo(expr ast.Expr) fieldInfo {
 	switch t := expr.(type) {
+
 	case *ast.Ident:
-		return t.Name
-	case *ast.StarExpr:
-		fmt.Println("pointer:" + getFieldType(t.X))
-		return "pointer:" + getFieldType(t.X)
+		switch t.Name {
+		case "int", "int8", "int16", "int32", "int64",
+			"uint", "uint8", "uint16", "uint32", "uint64",
+			"string", "bool":
+			return fieldInfo{Kind: t.Name}
+
+		default:
+			return fieldInfo{
+				Kind: "struct",
+				Type: t.Name,
+			}
+		}
+
 	case *ast.ArrayType:
-		return "slice"
+		return fieldInfo{Kind: "slice"}
+
 	case *ast.MapType:
-		return "map"
+		return fieldInfo{Kind: "map"}
+
+	case *ast.StarExpr:
+		info := getFieldInfo(t.X)
+		info.IsPtr = true
+		return info
+
 	default:
-		return "unknown"
+		return fieldInfo{Kind: "unknown"}
 	}
 }
