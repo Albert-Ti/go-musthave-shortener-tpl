@@ -10,11 +10,6 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/pool"
 )
 
-var (
-	writerPool = pool.NewPool[*compressWriter]()
-	readerPool = pool.NewPool[*compressReader]()
-)
-
 // compressWriter оборачивает http.ResponseWriter и сжимает ответ в gzip.
 type compressWriter struct {
 	w    http.ResponseWriter
@@ -22,21 +17,17 @@ type compressWriter struct {
 	pool *pool.Pool[*compressWriter]
 }
 
-func newCompressWriter(w http.ResponseWriter) (*compressWriter, error) {
-	c, ok := writerPool.Get()
-	if !ok {
-		zw, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
-		if err != nil {
-			return nil, err
-		}
-		c = &compressWriter{zw: zw}
-	} else {
-		// обнуляет внутренние буферы и флаг closed, забывает старый w, запоминает новый w
-		c.zw.Reset(w)
-	}
+var writerPool = pool.New(func() *compressWriter {
+	zw, _ := gzip.NewWriterLevel(io.Discard, gzip.BestSpeed)
+	return &compressWriter{zw: zw}
+})
+
+func newCompressWriter(w http.ResponseWriter) *compressWriter {
+	c := writerPool.Get()
+	c.zw.Reset(w)
 	c.w = w
 	c.pool = writerPool
-	return c, nil
+	return c
 }
 
 func (c *compressWriter) Header() http.Header {
@@ -78,23 +69,27 @@ type compressReader struct {
 	pool *pool.Pool[*compressReader]
 }
 
-func newCompressReader(r io.ReadCloser) (*compressReader, error) {
-	rp, ok := readerPool.Get()
+var readerPool = pool.New(func() *compressReader {
+	return &compressReader{} // zr == nil, инициализируется лениво при первом реальном r
+})
 
-	if !ok {
+func newCompressReader(r io.ReadCloser) (*compressReader, error) {
+	c := readerPool.Get()
+
+	if c.zr == nil {
 		zr, err := gzip.NewReader(r)
 		if err != nil {
 			return nil, err
 		}
-		rp = &compressReader{zr: zr}
+		c.zr = zr
 	} else {
-		if err := rp.zr.Reset(r); err != nil {
+		if err := c.zr.Reset(r); err != nil {
 			return nil, err
 		}
 	}
 
-	rp.pool = readerPool
-	return rp, nil
+	c.pool = readerPool
+	return c, nil
 }
 
 func (c *compressReader) Read(b []byte) (int, error) {
@@ -145,12 +140,7 @@ func GzipCompress(next http.Handler) http.Handler {
 		}
 
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			cw, err := newCompressWriter(w)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
+			cw := newCompressWriter(w)
 			w = cw
 			defer func() {
 				if err := cw.Close(); err != nil {

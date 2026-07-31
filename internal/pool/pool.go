@@ -1,53 +1,46 @@
-// Pool представляет универсальный пул объектов с generic параметром,
-// который ограничен типами, реализующими интерфейс Resetter.
 package pool
 
-import (
-	"sync"
-)
+import "sync"
 
 // Resetter определяет интерфейс для объектов, которые могут быть сброшены.
 type Resetter interface {
 	Reset()
 }
 
+// Pool — типобезопасная generic-обёртка над sync.Pool.
 type Pool[T Resetter] struct {
-	mu   sync.Mutex
-	free []T
+	sp sync.Pool
 }
 
-// NewPool создает и возвращает новый пул объектов.
+// New создает и возвращает новый пул объектов.
+// newFunc — фабричная функция, аналог поля New у sync.Pool,
+// вызывается, когда в пуле нет свободных объектов.
 //
 // Пример использования:
 //
-//	struct ExampleStruct {}
+//	type ExampleStruct struct{}
 //	func (e *ExampleStruct) Reset() {}
 //
-//	pool = pool.NewPool[*ExampleStruct]()
-func NewPool[T Resetter]() *Pool[T] {
-	return &Pool[T]{}
-}
-
-// Get возвращает свободный объект из пула (LIFO).
-// Возвращает объект и true, если объект доступен, иначе - zero-значение и false.
-func (p *Pool[T]) Get() (T, bool) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	var zero T
-	if len(p.free) == 0 {
-		return zero, false
+//	p := pool.New[*ExampleStruct](func() *ExampleStruct {
+//	    return &ExampleStruct{}
+//	})
+func New[T Resetter](newFunc func() T) *Pool[T] {
+	return &Pool[T]{
+		sp: sync.Pool{
+			New: func() any {
+				return newFunc()
+			},
+		},
 	}
-
-	el := p.free[len(p.free)-1]     // берем
-	p.free = p.free[:len(p.free)-1] // удаляем
-	return el, true
 }
 
-// Put возвращает объект в пул (LIFO) и автоматически вызывает его метод Reset().
+// Get возвращает объект из пула. Если свободных нет — вызывает newFunc.
+func (p *Pool[T]) Get() T {
+	return p.sp.Get().(T)
+}
+
+// Put сбрасывает объект и возвращает его в пул.
 func (p *Pool[T]) Put(el T) {
 	el.Reset()
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.free = append(p.free, el)
+	p.sp.Put(el)
 }
