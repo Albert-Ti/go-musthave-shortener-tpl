@@ -13,7 +13,7 @@ type Resetter interface {
 
 type Pool[T Resetter] struct {
 	mu   sync.Mutex
-	Free []T
+	free []T
 }
 
 // NewPool создает и возвращает новый пул объектов.
@@ -35,12 +35,12 @@ func (p *Pool[T]) Get() (T, bool) {
 	defer p.mu.Unlock()
 
 	var zero T
-	if len(p.Free) == 0 {
+	if len(p.free) == 0 {
 		return zero, false
 	}
 
-	el := p.Free[len(p.Free)-1]     // берем
-	p.Free = p.Free[:len(p.Free)-1] // удаляем
+	el := p.free[len(p.free)-1]     // берем
+	p.free = p.free[:len(p.free)-1] // удаляем
 	return el, true
 }
 
@@ -49,5 +49,5 @@ func (p *Pool[T]) Put(el T) {
 	el.Reset()
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.Free = append(p.Free, el)
+	p.free = append(p.free, el)
 }

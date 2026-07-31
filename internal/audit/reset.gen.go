@@ -19,7 +19,8 @@ func (t *Auditor) Reset() {
 	}
 
 	// Сложный тип t.ch
-	t.action = nil
+	clear(t.action)
+
 	t.observer = t.observer[:0]
 	t.bufSize = 0
 	t.workers = 0

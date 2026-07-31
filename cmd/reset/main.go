@@ -1,5 +1,3 @@
-//go:build ignore
-
 package main
 
 import (
@@ -31,6 +29,7 @@ type structData struct {
 type templateEntry struct {
 	Name      string
 	TypeValue string
+	isPointer bool
 }
 
 const templateStr = `
@@ -52,11 +51,27 @@ func (t *{{.Type}}) Reset() {
 	{{- else if eq .TypeValue "bool"}}
 	t.{{.Name}} = false
 	{{- else if eq .TypeValue "map"}}
-	t.{{.Name}} = nil
-	{{- else if eq .TypeValue "slice"}}
+	clear(t.{{.Name}})
+	{{else if eq .TypeValue "slice"}}
 	t.{{.Name}} = t.{{.Name}}[:0]
-	{{- else if eq .TypeValue "pointer"}}
-	t.{{.Name}} = nil
+
+	{{- else if eq .TypeValue "pointer:int"}}
+	if t.{{.Name}} != nil {
+    *t.{{.Name}} = 0
+	}
+	{{- else if eq .TypeValue "pointer:string"}}
+	if t.{{.Name}} != nil {
+    *t.{{.Name}} = ""
+	}
+	{{- else if eq .TypeValue "pointer:map"}}
+	if t.{{.Name}} != nil {
+    clear(*t.{{.Name}})
+	}
+	{{- else if eq .TypeValue "pointer:slice"}}
+	if t.{{.Name}} != nil {
+    *t.{{.Name}} = (*t.{{.Name}})[:0]
+	}
+
 	{{- else if eq .TypeValue "unknown"}}
 	// Сложный тип t.{{.Name}}
 	{{- end}}
@@ -68,7 +83,6 @@ func (t *{{.Type}}) Reset() {
 func main() {
 	flag.Parse()
 
-	fmt.Println(flag.Args())
 	cfg := &packages.Config{
 		Mode:  packages.NeedName | packages.NeedFiles | packages.NeedSyntax,
 		Tests: false,
@@ -113,7 +127,7 @@ func main() {
 						for _, name := range field.Names { // ВСЕ имена, не только [0]
 							entries = append(entries, templateEntry{
 								Name:      name.Name,
-								TypeValue: getFieldType(field),
+								TypeValue: getFieldType(field.Type),
 							})
 						}
 					}
@@ -161,12 +175,13 @@ func packageDir(pkg *packages.Package) string {
 	return ""
 }
 
-func getFieldType(field *ast.Field) string {
-	switch t := field.Type.(type) {
+func getFieldType(expr ast.Expr) string {
+	switch t := expr.(type) {
 	case *ast.Ident:
 		return t.Name
 	case *ast.StarExpr:
-		return "pointer"
+		fmt.Println("pointer:" + getFieldType(t.X))
+		return "pointer:" + getFieldType(t.X)
 	case *ast.ArrayType:
 		return "slice"
 	case *ast.MapType:

@@ -2,6 +2,7 @@ package osexitcheck
 
 import (
 	"go/ast"
+	"go/types"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -18,8 +19,10 @@ func run(pass *analysis.Pass) (any, error) {
 		ast.Inspect(file, func(n ast.Node) bool {
 			if call, ok := n.(*ast.CallExpr); ok {
 				if s, ok := call.Fun.(*ast.SelectorExpr); ok {
-					if ident, ok := s.X.(*ast.Ident); ok {
-						if ident.Name == "os" && s.Sel.Name == "Exit" {
+					pkg := pass.TypesInfo.Uses[s.Sel]
+
+					if fn, ok := pkg.(*types.Func); ok && fn.Pkg() != nil {
+						if fn.Pkg().Path() == "os" && fn.Name() == "Exit" {
 							pass.Reportf(call.Pos(), "прямой вызов os.Exit запрещён в функции main пакета main")
 						}
 					}

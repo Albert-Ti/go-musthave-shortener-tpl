@@ -84,7 +84,6 @@ func main() {
 	if errRun != nil {
 		panic(errRun)
 	}
-
 }
 
 func runMigrations(dsn string) error {
