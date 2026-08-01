@@ -15,28 +15,27 @@ type Pool[T Resetter] struct {
 // New создает и возвращает новый пул объектов.
 // newFunc — фабричная функция, аналог поля New у sync.Pool,
 // вызывается, когда в пуле нет свободных объектов.
-//
-// Пример использования:
-//
-//	type ExampleStruct struct{}
-//	func (e *ExampleStruct) Reset() {}
-//
-//	p := pool.New[*ExampleStruct](func() *ExampleStruct {
-//	    return &ExampleStruct{}
-//	})
 func New[T Resetter](newFunc func() T) *Pool[T] {
-	return &Pool[T]{
-		sp: sync.Pool{
-			New: func() any {
-				return newFunc()
-			},
-		},
+	p := &Pool[T]{}
+
+	if newFunc != nil {
+		p.sp.New = func() any {
+			return newFunc()
+		}
 	}
+	return p
 }
 
 // Get возвращает объект из пула. Если свободных нет — вызывает newFunc.
 func (p *Pool[T]) Get() T {
-	return p.sp.Get().(T)
+	el := p.sp.Get()
+
+	if el == nil {
+		var zero T
+		return zero
+	}
+
+	return el.(T)
 }
 
 // Put сбрасывает объект и возвращает его в пул.
