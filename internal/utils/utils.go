@@ -2,25 +2,13 @@ package utils
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 )
 
 var GenerateUUID = func() string {
-
-	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-	const length = 8
-
-	bytes := make([]byte, length)
-
-	_, err := rand.Read(bytes)
-	if err != nil {
-		panic(err)
-	}
-
-	for i := range bytes {
-		bytes[i] = alphabet[int(bytes[i])%len(alphabet)]
-	}
-
-	return string(bytes)
+	key := make([]byte, 9)
+	rand.Read(key)
+	return base64.RawURLEncoding.EncodeToString(key)
 }
 
 func GenerateMockUUID() func() {
