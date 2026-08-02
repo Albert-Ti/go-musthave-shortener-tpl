@@ -54,26 +54,6 @@ func (s *Service) Save(ctx context.Context, url string, userID string) (string, 
 	return savedKey, true, nil
 }
 
-// func (s *Service) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
-// 	results := make([]model.BatchResp, len(batch))
-// 	prefix := s.cfg.BaseURL + "/"
-
-// 	for i, v := range batch {
-// 		key := utils.GenerateUUID()
-// 		savedKey, err := s.repository.Save(ctx, key, v.OriginalURL, userID)
-
-// 		if err != nil && !errors.Is(err, repository.ErrConflict) {
-// 			return nil, err
-// 		}
-
-// 		results[i] = model.BatchResp{
-// 			CorrelationID: v.CorrelationID,
-// 			ShortURL:      prefix + savedKey,
-// 		}
-// 	}
-// 	return results, nil
-// }
-
 func (s *Service) BatchSave(ctx context.Context, batch []model.BatchReq, userID string) ([]model.BatchResp, error) {
 	return s.repository.BatchSave(ctx, batch, s.cfg.BaseURL, userID)
 }

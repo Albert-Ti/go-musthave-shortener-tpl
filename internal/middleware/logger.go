@@ -7,6 +7,7 @@ import (
 )
 
 // responseData собирает данные об ответе для последующего логирования.
+// generate:reset
 type responseData struct {
 	size   int
 	status int

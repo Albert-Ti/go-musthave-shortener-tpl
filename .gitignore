@@ -22,6 +22,9 @@ vendor/
 .idea
 .vscode
 
+# My ignore
 .env
-
 .DS_Store
+file_storage.json
+audit.json
+staticlint

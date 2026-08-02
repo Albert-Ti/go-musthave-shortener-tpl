@@ -1,24 +1,43 @@
 DB_URL = postgres://postgres:postgres@localhost:5432/db?sslmode=disable
+RUN_PATH = cmd/shortener/main.go
 MIGRATIONS_PATH = ./migrations
 PPROF_FILE_PATH = profiles/base.pprof
+BUILD_DATE = $(shell date +'%Y-%m-%d_%H:%M:%S')
+BUILD_COMMIT = $(shell git rev-parse --short HEAD)
+AUDIT_FILE_NAME = audit.json
 
 .PHONY: run ping test migrate-up migrate-down migrate-create
 
+# Использование: make run-pg RACE=1 (Запуск сервера или теста с флагом -race)
+RACE_FLAG :=
+ifdef RACE
+RACE_FLAG := -race
+endif
+
 # Запуск сервера с настройками по умолчанию (in-memory хранилище)
 run:
-	go run cmd/shortener/main.go
+	go run $(RUN_PATH)
 
 # Запуск сервера с файловым хранилищем
 run-file:
-	go run cmd/shortener/main.go -f="file_storage.json"
+	go run $(RUN_PATH) -f="file_storage.json"
 
 # Запуск сервера с Postgres и файлом аудита
 run-pg:
-	go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json"
+	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE_NAME)"
 
 # То же, что run-pg, но с включённым pprof-сервером (MODE=debug)
 run-pg-debug:
-	export MODE=debug && go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json"
+	export MODE=debug && \
+	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE_NAME)"
+
+run-pg-ldflags:
+	go run -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$(BUILD_DATE) -X 'main.buildCommit=$(BUILD_COMMIT)'" \
+		$(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE_NAME)"
+
+# Сборка с передачей значений
+build-ldflags:
+	go build -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$(BUILD_DATE) -X 'main.buildCommit=$(BUILD_COMMIT)'" -o shortener $(RUN_PATH)
 
 # Проверка доступности сервера
 ping:
@@ -26,7 +45,22 @@ ping:
 
 # Запуск всех тестов
 test:
-	go test ./...
+	go $(RACE_FLAG) test ./...
+
+# Запуск всех бенчмарк тестов
+test-bench:
+	go test $(RACE_FLAG) -bench . -benchmem ./...
+
+# Post запрос теста архивирования
+test-curl-gzip:
+	echo "https://github.com" | gzip | curl -X POST http://localhost:8080/ \
+  -H "Content-Encoding: gzip" \
+  -H "Content-Type: text/plain" \
+  --data-binary @-
+
+# Нагрузочный тест: 1000 запросов, 10 одновременных соединений
+test-hey:
+	hey -n 1000 -c 10 http://localhost:8080/
 
 # Создание новой миграции: make migrate-create name=my_migration
 migrate-create:
@@ -83,10 +117,6 @@ docker-volume-rm:
 mockgen:
 	mockgen -source=internal/repository/repository.go -destination=internal/repository/mocks/mock_repository.go -package=mocks 
 
-# Нагрузочный тест: 1000 запросов, 10 одновременных соединений
-hey:
-	hey -n 1000 -c 10 http://localhost:8080/
-
 # Снять heap-профиль pprof в файл: make pprof-snapshot file_path=profiles/x.pprof
 pprof-snapshot:
 	@test -n "$(file_path)" || (echo "Error: file_path is required. Use: make  file_path=profiles/file_path.pprof" && exit 1)
@@ -101,6 +131,18 @@ pprof-run-web:
 pprof-diff:
 	go tool pprof -top -diff_base=profiles/base.pprof profiles/result.pprof 
 
-# Запустить локальный сервер документации pkgsite на :6000
-pkgsite:
-	pkgsite -http=":6000" .
+# Запустить локальный сервер документации pkgsite на :6000 (Для запуска требуется запуск сервера в режиме MODE=debug)
+docs-pkgsite:
+	pkgsite -open .
+
+# Скомпилировать multichecker.Main и запустить анализ через набор игнорируемых правил staticcheck_ignore.json
+analyze-multichecker:
+	go build -o ./staticlint ./cmd/staticlint/ && ./staticlint ./...
+
+# Запуск анализа через файл конфигурации staticcheck.conf
+analyze-staticcheck:
+	staticcheck ./...
+
+# Кодогенерация - просканирует все файлы текущей директории и запустит операции, указанные в комментариях //go:generate.
+go-generate:
+	go generate ./...

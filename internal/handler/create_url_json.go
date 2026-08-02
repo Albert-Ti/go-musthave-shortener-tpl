@@ -58,7 +58,10 @@ func CreateShortenURLJSON(svc *service.Service, auditor *audit.Auditor, baseURL 
 			w.WriteHeader(http.StatusCreated)
 		}
 
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		if auditor != nil {
 			auditor.AddLog(r.Method, r.RequestURI, userID, baseURL)

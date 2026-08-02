@@ -112,8 +112,8 @@ func (ps *PostgresStorage) Save(ctx context.Context, key string, url string, use
 	return key, nil
 }
 
-func (ps *PostgresStorage) BatchSave(ctx context.Context, items []model.BatchReq, baseURL string, userID string) ([]model.BatchResp, error) {
-	results := make([]model.BatchResp, len(items))
+func (ps *PostgresStorage) BatchSave(ctx context.Context, items []model.BatchReq, baseURL string, userID string) (results []model.BatchResp, err error) {
+	results = make([]model.BatchResp, len(items))
 
 	queryStr := `
 		WITH temp AS (
@@ -134,22 +134,23 @@ func (ps *PostgresStorage) BatchSave(ctx context.Context, items []model.BatchReq
 		LIMIT 1;
   `
 	batch := &pgx.Batch{}
-
 	for _, v := range items {
 		key := utils.GenerateUUID()
 		batch.Queue(queryStr, key, v.OriginalURL, userID)
 	}
 
 	br := ps.pool.SendBatch(ctx, batch)
-	defer br.Close()
+	defer func() {
+		if closeErr := br.Close(); closeErr != nil {
+			err = closeErr
+		}
+	}()
 
 	for i, v := range items {
 		var returnedKey string
-
-		if err := br.QueryRow().Scan(&returnedKey); err != nil {
-			return nil, err
+		if scanErr := br.QueryRow().Scan(&returnedKey); scanErr != nil {
+			return nil, scanErr
 		}
-
 		results[i] = model.BatchResp{
 			CorrelationID: v.CorrelationID,
 			ShortURL:      baseURL + "/" + returnedKey,

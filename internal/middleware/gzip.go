@@ -3,62 +3,31 @@ package middleware
 import (
 	"compress/gzip"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
-	"sync"
+
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/pool"
 )
-
-// gzipPool переиспользует *gzip.Writer, чтобы не создавать новый на каждый запрос.
-type gzipPool struct {
-	mu   sync.Mutex
-	free []*gzip.Writer
-}
-
-func newGzipPool() *gzipPool {
-	return &gzipPool{}
-}
-
-func (p *gzipPool) get(w http.ResponseWriter) *gzip.Writer {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if len(p.free) == 0 {
-		// gzip.BestSpeed (=1) — сжимает быстрее, но хуже (больше итоговый размер);
-		// gzip.BestCompression (=9) — сжимает медленнее, но сильнее (меньше итоговый размер);
-		// gzip.DefaultCompression (=-1) — компромисс, то же самое что использует NewWriter.
-		newZw, _ := gzip.NewWriterLevel(w, gzip.BestSpeed)
-		return newZw
-	}
-
-	gz := p.free[len(p.free)-1]     // берем
-	p.free = p.free[:len(p.free)-1] // удаляет
-	gz.Reset(w)                     // очистка внутреннего состояния самого объекта gz
-	return gz
-}
-
-func (p *gzipPool) put(gz *gzip.Writer) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.free = append(p.free, gz)
-}
 
 // compressWriter оборачивает http.ResponseWriter и сжимает ответ в gzip.
 type compressWriter struct {
 	w    http.ResponseWriter
 	zw   *gzip.Writer
-	pool *gzipPool
+	pool *pool.Pool[*compressWriter]
 }
 
-var gzPool = newGzipPool()
+var writerPool = pool.New(func() *compressWriter {
+	zw, _ := gzip.NewWriterLevel(io.Discard, gzip.BestSpeed)
+	return &compressWriter{zw: zw}
+})
 
 func newCompressWriter(w http.ResponseWriter) *compressWriter {
-	zw := gzPool.get(w)
-
-	return &compressWriter{
-		w:    w,
-		zw:   zw,
-		pool: gzPool,
-	}
+	c := writerPool.Get()
+	c.zw.Reset(w)
+	c.w = w
+	c.pool = writerPool
+	return c
 }
 
 func (c *compressWriter) Header() http.Header {
@@ -80,10 +49,15 @@ func (c *compressWriter) Write(p []byte) (int, error) {
 	return c.zw.Write(p)
 }
 
+func (c *compressWriter) Reset() {
+	c.zw.Reset(io.Discard) // отвязка от старого w
+	c.w = nil
+}
+
 func (c *compressWriter) Close() error {
 	if c.Header().Get("Content-Encoding") == "gzip" {
 		err := c.zw.Close()
-		c.pool.put(c.zw)
+		c.pool.Put(c)
 		return err
 	}
 	return nil
@@ -91,31 +65,47 @@ func (c *compressWriter) Close() error {
 
 // compressReader оборачивает io.ReadCloser и распаковывает gzip при чтении.
 type compressReader struct {
-	r  io.ReadCloser
-	zr *gzip.Reader
+	zr   *gzip.Reader
+	pool *pool.Pool[*compressReader]
 }
+
+var readerPool = pool.New(func() *compressReader {
+	return &compressReader{} // zr == nil, инициализируется лениво при первом реальном r
+})
 
 func newCompressReader(r io.ReadCloser) (*compressReader, error) {
-	zr, err := gzip.NewReader(r)
-	if err != nil {
-		return nil, err
+	c := readerPool.Get()
+
+	if c.zr == nil {
+		zr, err := gzip.NewReader(r)
+		if err != nil {
+			return nil, err
+		}
+		c.zr = zr
+	} else {
+		if err := c.zr.Reset(r); err != nil {
+			return nil, err
+		}
 	}
 
-	return &compressReader{
-		r:  r,
-		zr: zr,
-	}, nil
+	c.pool = readerPool
+	return c, nil
 }
 
-func (c compressReader) Read(b []byte) (int, error) {
+func (c *compressReader) Read(b []byte) (int, error) {
 	return c.zr.Read(b)
 }
 
+func (c *compressReader) Reset() {
+	_ = c.zr.Reset(http.NoBody) // безопасная отвязка от старого r
+}
+
 func (c *compressReader) Close() error {
-	if err := c.r.Close(); err != nil {
+	if err := c.zr.Close(); err != nil {
 		return err
 	}
-	return c.zr.Close()
+	c.pool.Put(c)
+	return nil
 }
 
 // GzipCompress - middleware, сжимающее тело запроса и ответа в gzip,
@@ -135,15 +125,28 @@ func GzipCompress(next http.Handler) http.Handler {
 				return
 			}
 
+			defer func() {
+				if err := r.Body.Close(); err != nil {
+					slog.Error("Failed to close request body", "error", err)
+				}
+			}()
+
 			r.Body = cr
-			defer cr.Close()
+			defer func() {
+				if err := cr.Close(); err != nil {
+					slog.Error("gzip: close request body reader:", "error", err)
+				}
+			}()
 		}
 
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			cw := newCompressWriter(w)
-
 			w = cw
-			defer cw.Close()
+			defer func() {
+				if err := cw.Close(); err != nil {
+					slog.Error("gzip: close response writer:", "error", err)
+				}
+			}()
 		}
 
 		next.ServeHTTP(w, r)

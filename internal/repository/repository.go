@@ -1,3 +1,4 @@
+// pattern Factory(Фабрика)
 package repository
 
 import (
@@ -20,7 +21,6 @@ type Repository interface {
 	Close() error
 }
 
-// pattern Factory(Фабрика)
 func NewRepository(cfg *config.Options) (Repository, error) {
 	if cfg.DatabaseDSN != "" {
 		slog.Info("Using database storage")

@@ -17,6 +17,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ExampleGetShortenURLs демонстрирует получение всех ссылок пользователя
@@ -142,7 +143,9 @@ func TestGetShortenURLs(t *testing.T) {
 			handler.ServeHTTP(rr, req)
 
 			res := rr.Result()
-			defer res.Body.Close()
+			defer func() {
+				require.NoError(t, res.Body.Close())
+			}()
 
 			assert.Equal(t, tt.statusCode, res.StatusCode)
 			if tt.name == "Case_1 OK" {

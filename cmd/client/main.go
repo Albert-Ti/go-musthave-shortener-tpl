@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -38,15 +39,19 @@ func main() {
 	// в заголовках запроса указываем кодировку
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	// отправляем запрос и получаем ответ
-	response, err := client.Do(request)
+	r, err := client.Do(request)
 	if err != nil {
 		panic(err)
 	}
 	// выводим код ответа
-	fmt.Println("Статус-код ", response.Status)
-	defer response.Body.Close()
+	fmt.Println("Статус-код ", r.Status)
+	defer func() {
+		if errBody := r.Body.Close(); errBody != nil {
+			slog.Error("Failed to close request body", "error", errBody)
+		}
+	}()
 	// читаем поток из тела ответа
-	body, err := io.ReadAll(response.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		panic(err)
 	}

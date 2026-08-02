@@ -42,7 +42,7 @@ func ExampleCreateShortenURL() {
 	}
 
 	svc := service.NewService(repo, config.NewOptions(config.WithBaseURL("http://localhost:8080")))
-	auditor, _ := audit.NewAuditor("", "")
+	auditor, _ := audit.NewAuditor("", "", 20, 100)
 
 	defer utils.GenerateMockUUID()()
 
@@ -78,10 +78,12 @@ func TestCreateShortURL(t *testing.T) {
 	if e != nil {
 		panic(e)
 	}
-	defer repo.Close()
+	defer func() {
+		require.NoError(t, repo.Close())
+	}()
 
 	svc := service.NewService(repo, cfg)
-	auditor, _ := audit.NewAuditor("", "")
+	auditor, _ := audit.NewAuditor("", "", 20, 100)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), middleware.UserIDKey, "123")

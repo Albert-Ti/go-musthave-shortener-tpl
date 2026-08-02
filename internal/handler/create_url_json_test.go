@@ -46,7 +46,7 @@ func ExampleCreateShortenURLJSON() {
 	}
 
 	svc := service.NewService(repo, config.NewOptions(config.WithBaseURL("http://localhost:8080")))
-	auditor, _ := audit.NewAuditor("", "")
+	auditor, _ := audit.NewAuditor("", "", 20, 100)
 
 	defer utils.GenerateMockUUID()()
 
@@ -81,10 +81,12 @@ func TestCreateShortURLJSON(t *testing.T) {
 	if e != nil {
 		panic(e)
 	}
-	defer repo.Close()
+	defer func() {
+		require.NoError(t, repo.Close())
+	}()
 
 	svc := service.NewService(repo, cfg)
-	auditor, _ := audit.NewAuditor("", "")
+	auditor, _ := audit.NewAuditor("", "", 20, 100)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), middleware.UserIDKey, "123")
@@ -92,6 +94,7 @@ func TestCreateShortURLJSON(t *testing.T) {
 		handler.CreateShortenURLJSON(svc, auditor, cfg.BaseURL)(w, r)
 	})
 
+	// e2e test
 	srv := httptest.NewServer(middleware.GzipCompress(handler))
 	defer srv.Close()
 
@@ -196,16 +199,18 @@ func TestCreateShortURLJSON(t *testing.T) {
 			require.NoError(t, err)
 
 			defer func() {
-				if err := resp.Body.Close(); err != nil {
-					slog.Error("Failed to close response body", "error", err)
+				if errBody := resp.Body.Close(); errBody != nil {
+					slog.Error("Failed to close response body", "error", errBody)
 				}
 			}()
 
 			var reader io.Reader = resp.Body
 			if resp.Header.Get("Content-Encoding") == "gzip" {
-				gzReader, err := gzip.NewReader(resp.Body)
-				require.NoError(t, err)
-				defer gzReader.Close()
+				gzReader, errGzip := gzip.NewReader(resp.Body)
+				require.NoError(t, errGzip)
+				defer func() {
+					require.NoError(t, gzReader.Close())
+				}()
 				reader = gzReader
 			}
 

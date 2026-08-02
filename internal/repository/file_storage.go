@@ -19,7 +19,7 @@ type fileStorage struct {
 }
 
 type filRecord struct {
-	Uuid        int    `json:"uuid"`
+	UUID        int    `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
@@ -81,7 +81,7 @@ func (fs *fileStorage) Save(ctx context.Context, key string, url string, userID 
 	snapshot := fs.saveMemento()
 
 	record := &filRecord{
-		Uuid:        len(fs.urls) + 1,
+		UUID:        len(fs.urls) + 1,
 		ShortURL:    key,
 		OriginalURL: url,
 	}
@@ -111,7 +111,7 @@ func (fs *fileStorage) BatchSave(ctx context.Context, batch []model.BatchReq, ba
 		key := utils.GenerateUUID()
 
 		record := &filRecord{
-			Uuid:        len(fs.urls) + 1,
+			UUID:        len(fs.urls) + 1,
 			ShortURL:    key,
 			OriginalURL: v.OriginalURL,
 		}
@@ -146,11 +146,11 @@ func (fs *fileStorage) BatchDelete(ctx context.Context, keys []string, userID st
 	return nil
 }
 
-func (u *fileStorage) Close() error {
-	return u.file.Close()
+func (fs *fileStorage) Close() error {
+	return fs.file.Close()
 }
 
-func (u *fileStorage) Ping(ctx context.Context) error {
+func (fs *fileStorage) Ping(ctx context.Context) error {
 	return nil
 }
 

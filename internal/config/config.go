@@ -6,8 +6,15 @@ import (
 	"os"
 )
 
+const (
+	ModeDev   = "dev"
+	ModeDebug = "debug"
+	ModeProd  = "prod"
+)
+
 // Options хранит настройки приложения, собранные из флагов командной строки,
 // переменных окружения и значений по умолчанию.
+// generate:reset
 type Options struct {
 	RunAddr         string
 	BaseURL         string
@@ -33,7 +40,7 @@ func NewOptions(opts ...func(*Options)) *Options {
 		RunAddr:      "localhost:8080",
 		BaseURL:      "http://localhost:8080",
 		JWTSecretKey: "jwt_secret_key",
-		Mode:         "dev",
+		Mode:         ModeDev,
 	}
 
 	for _, opt := range opts {
@@ -79,7 +86,9 @@ func Build() *Options {
 	fs.StringVar(&raw.AuditFile, "audit-file", "", "путь к файлу-приёмнику")
 	fs.StringVar(&raw.AuditURL, "audit-url", "", "URL удаленного сервера-приёмника")
 
-	fs.Parse(os.Args[1:])
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		panic(err)
+	}
 
 	explicit := map[string]bool{}
 	fs.Visit(func(f *flag.Flag) {
@@ -111,6 +120,5 @@ func Build() *Options {
 		WithDatabaseDSN(dsn),
 		WithAuditFile(pick("audit-file", raw.AuditFile, "AUDIT_FILE")),
 		WithAuditURL(pick("audit-url", raw.AuditURL, "AUDIT_URL")),
-		WithMode(pick("m", raw.Mode, "MODE")),
 	)
 }

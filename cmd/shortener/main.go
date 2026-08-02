@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 
+	_ "embed"
 	_ "net/http/pprof"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
@@ -17,72 +19,95 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
+//go:generate go run ../reset
+
 func main() {
-	cfg := config.Build()
-	repo, err := repository.NewRepository(cfg)
+	fmt.Printf("\n  Build version: %s\n  Build date: %s\n  Build commit: %s\n \n",
+		buildVersion, buildDate, buildCommit)
 
-	if err := runMigrations(cfg.DatabaseDSN); err != nil {
-		panic(err)
+	opts := config.Build()
+	repo, errRepo := repository.NewRepository(opts)
+	if errRepo != nil {
+		panic(errRepo)
+	}
+	defer func() {
+		if closeErr := repo.Close(); closeErr != nil {
+			panic(closeErr)
+		}
+	}()
+
+	if errMigrate := runMigrations(opts.DatabaseDSN); errMigrate != nil {
+		panic(errMigrate)
 	}
 
-	if err != nil {
-		panic(err)
-	}
-	defer repo.Close()
-
-	svc := service.NewService(repo, cfg)
+	svc := service.NewService(repo, opts)
 	r := chi.NewRouter()
 
-	auditor, err := audit.NewAuditor(cfg.AuditFile, cfg.AuditURL)
-	if err != nil {
-		panic(err)
+	auditor, errAudit := audit.NewAuditor(opts.AuditFile, opts.AuditURL, 20, 100)
+	if errAudit != nil {
+		panic(errAudit)
 	}
+	defer auditor.Close()
 
 	r.Use(chiMiddleware.RealIP)
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(myMiddleware.WithLogging)
 	r.Use(myMiddleware.GzipCompress)
-	r.Use(myMiddleware.AuthGuard(cfg.JWTSecretKey))
+	r.Use(myMiddleware.AuthGuard(opts.JWTSecretKey))
 
-	r.Post("/", handler.CreateShortenURL(svc, auditor, cfg.BaseURL))
-	r.Get("/{id}", handler.RedirectByKeyURL(svc, auditor, cfg.BaseURL))
-	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc, auditor, cfg.BaseURL))
+	r.Post("/", handler.CreateShortenURL(svc, auditor, opts.BaseURL))
+	r.Get("/{id}", handler.RedirectByKeyURL(svc, auditor, opts.BaseURL))
+	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc, auditor, opts.BaseURL))
 	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(svc))
 	r.Get("/api/user/urls", handler.GetShortenURLs(svc))
 	r.Delete("/api/user/urls", handler.DeleteShortenURLs(svc))
 	r.Get("/ping", handler.PingDatabase(svc))
 
-	if cfg.Mode == "debug" {
+	if opts.Mode == config.ModeDebug {
 		slog.Info("Running server pprof", "host", "localhost:6060")
-		go http.ListenAndServe("localhost:6060", nil)
+		go func() {
+			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+				slog.Error("failed to Running server pprof", "error", err)
+			}
+		}()
 	}
 
-	slog.Info("Running server", "host", cfg.RunAddr)
-	errRun := http.ListenAndServe(cfg.RunAddr, r)
+	slog.Info("Running server", "host", opts.RunAddr, "mode", opts.Mode)
+
+	errRun := http.ListenAndServe(opts.RunAddr, r)
 	if errRun != nil {
 		panic(errRun)
 	}
-
 }
 
 func runMigrations(dsn string) error {
 	if dsn == "" {
 		return nil
 	}
-	m, err := migrate.New("file://migrations", dsn)
-	if err != nil {
-		return err
+	m, errMigrate := migrate.New("file://migrations", dsn)
+	if errMigrate != nil {
+		return errMigrate
 	}
-	defer m.Close()
+	defer func() {
+		if srcErr, dbErr := m.Close(); srcErr != nil || dbErr != nil {
+			slog.Error("failed to close migrate instance", "source_error", srcErr, "db_error", dbErr)
+		}
+	}()
 
-	err = m.Up()
-	switch err {
+	errMigrate = m.Up()
+	switch errMigrate {
 	case nil:
 		slog.Info("Migrations applied successfully")
 	case migrate.ErrNoChange:
 		slog.Info("Database schema is up-to-date")
 	default:
-		return err
+		return errMigrate
 	}
 	return nil
 }

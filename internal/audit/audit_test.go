@@ -5,8 +5,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"runtime"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type mockObserver struct{}
@@ -88,27 +91,45 @@ func BenchmarkSlowHTTPObserver(b *testing.B) {
 	}))
 	defer slowServer.Close()
 
-	auditor := &Auditor{
-		ch:     make(chan AuditLog, 100),
-		action: map[string]string{http.MethodGet: "follow"},
-	}
-	auditor.subscribe(NewHTTPObserver(slowServer.URL))
-	go auditor.broadcast()
-	defer close(auditor.ch)
+	auditor, _ := NewAuditor("", slowServer.URL, 50, 100)
+	defer auditor.Close()
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
 		auditor.AddLog(http.MethodGet, "/user/audit", "user-1", "http://localhost:8080")
+		time.Sleep(time.Millisecond)
 	}
 }
 
+func TestAuditor_WorkerCount(t *testing.T) {
+	expectWorkers := 100
+
+	slowServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(5 * time.Millisecond) // симулируем медленный внешний сервис
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	defer slowServer.Close()
+
+	auditor, _ := NewAuditor("", slowServer.URL, 20, expectWorkers)
+	defer auditor.Close()
+
+	for i := 0; i < 100; i++ {
+		auditor.AddLog(http.MethodGet, "/user/audit", "user-1", "http://localhost:8080")
+		time.Sleep(time.Millisecond)
+	}
+
+	assert.Equal(t, int32(expectWorkers), auditor.active.Load())
+}
+
 type countingObserver struct {
-	count int
+	count atomic.Int64
 }
 
 func (c *countingObserver) Notify(_ AuditLog) {
-	c.count++
+	c.count.Add(1)
+	time.Sleep(100 * time.Millisecond)
 }
 
 func TestAuditor_GoroutineCount(t *testing.T) {
@@ -126,13 +147,11 @@ func TestAuditor_GoroutineCount(t *testing.T) {
 
 	go auditor.broadcast()
 
-	for range 100 {
+	for range 100000 {
 		auditor.AddLog(http.MethodGet, "/test", "user-1", "http://localhost")
 	}
 
-	time.Sleep(800 * time.Millisecond)
 	close(auditor.ch)
-	time.Sleep(200 * time.Millisecond)
 
 	after := runtime.NumGoroutine()
 
