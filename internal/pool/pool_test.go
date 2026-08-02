@@ -2,7 +2,6 @@ package pool_test
 
 import (
 	"bytes"
-	"io"
 	"os"
 	"testing"
 
@@ -32,10 +31,6 @@ func ExamplePool() {
 type testStruct struct{}
 
 func (t *testStruct) Reset() {}
-
-func Log(w io.Writer, key, val string) {
-
-}
 
 func TestPool(t *testing.T) {
 	t.Run("object nil", func(t *testing.T) {

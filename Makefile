@@ -1,35 +1,43 @@
 DB_URL = postgres://postgres:postgres@localhost:5432/db?sslmode=disable
+RUN_PATH = cmd/shortener/main.go
 MIGRATIONS_PATH = ./migrations
 PPROF_FILE_PATH = profiles/base.pprof
-BUILD_DATE := $(shell date +'%Y-%m-%d_%H:%M:%S')
-BUILD_COMMIT := $(shell git rev-parse --short HEAD)
+BUILD_DATE = $(shell date +'%Y-%m-%d_%H:%M:%S')
+BUILD_COMMIT = $(shell git rev-parse --short HEAD)
+AUDIT_FILE_NAME = audit.json
 
 .PHONY: run ping test migrate-up migrate-down migrate-create
 
+# Использование: make run-pg RACE=1 (Запуск сервера или теста с флагом -race)
+RACE_FLAG :=
+ifdef RACE
+RACE_FLAG := -race
+endif
+
 # Запуск сервера с настройками по умолчанию (in-memory хранилище)
 run:
-	go run cmd/shortener/main.go
+	go run $(RUN_PATH)
 
 # Запуск сервера с файловым хранилищем
 run-file:
-	go run cmd/shortener/main.go -f="file_storage.json"
+	go run $(RUN_PATH) -f="file_storage.json"
 
 # Запуск сервера с Postgres и файлом аудита
 run-pg:
-	go run -race cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json"
+	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE_NAME)"
 
 # То же, что run-pg, но с включённым pprof-сервером (MODE=debug)
 run-pg-debug:
 	export MODE=debug && \
-	go run cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json"
+	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE_NAME)"
 
 run-pg-ldflags:
 	go run -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$(BUILD_DATE) -X 'main.buildCommit=$(BUILD_COMMIT)'" \
-		cmd/shortener/main.go -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="audit.json"
+		$(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE_NAME)"
 
 # Сборка с передачей значений
 build-ldflags:
-	go build -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$(BUILD_DATE) -X 'main.buildCommit=$(BUILD_COMMIT)'" -o shortener cmd/shortener/main.go
+	go build -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$(BUILD_DATE) -X 'main.buildCommit=$(BUILD_COMMIT)'" -o shortener $(RUN_PATH)
 
 # Проверка доступности сервера
 ping:
@@ -37,11 +45,11 @@ ping:
 
 # Запуск всех тестов
 test:
-	go test -race ./...
+	go $(RACE_FLAG) test ./...
 
 # Запуск всех бенчмарк тестов
 test-bench:
-	go test -race -bench . -benchmem ./...
+	go test $(RACE_FLAG) -bench . -benchmem ./...
 
 # Post запрос теста архивирования
 test-curl-gzip:
