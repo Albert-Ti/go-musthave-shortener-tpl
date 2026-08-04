@@ -24,6 +24,7 @@ type Options struct {
 	AuditFile       string
 	AuditURL        string
 	Mode            string
+	EnableHTTPS     string
 }
 
 // NewOptions создаёт Options со значениями по умолчанию и применяет
@@ -73,6 +74,9 @@ func WithAuditURL(v string) func(*Options) { return func(o *Options) { o.AuditUR
 // WithMode задаёт режим работы приложения (например, "dev" или "debug").
 func WithMode(v string) func(*Options) { return func(o *Options) { o.Mode = v } }
 
+// WithMode задаёт режим работы приложения (например, "dev" или "debug").
+func WithEnableHTTPS(v string) func(*Options) { return func(o *Options) { o.EnableHTTPS = v } }
+
 // Build собирает Options из флагов командной строки и переменных окружения.
 // Флаг имеет приоритет, если задан явно; иначе используется переменная
 // окружения; иначе — значение по умолчанию.
@@ -85,6 +89,7 @@ func Build() *Options {
 	fs.StringVar(&raw.DatabaseDSN, "d", "", "connection string to DB")
 	fs.StringVar(&raw.AuditFile, "audit-file", "", "путь к файлу-приёмнику")
 	fs.StringVar(&raw.AuditURL, "audit-url", "", "URL удаленного сервера-приёмника")
+	fs.StringVar(&raw.EnableHTTPS, "s", "", "Включение HTTPS")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		panic(err)
@@ -120,5 +125,6 @@ func Build() *Options {
 		WithDatabaseDSN(dsn),
 		WithAuditFile(pick("audit-file", raw.AuditFile, "AUDIT_FILE")),
 		WithAuditURL(pick("audit-url", raw.AuditURL, "AUDIT_URL")),
+		WithEnableHTTPS(pick("s", raw.EnableHTTPS, "ENABLE_HTTPS")),
 	)
 }

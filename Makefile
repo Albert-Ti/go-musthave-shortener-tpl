@@ -4,7 +4,7 @@ MIGRATIONS_PATH = ./migrations
 PPROF_FILE_PATH = profiles/base.pprof
 BUILD_DATE = $(shell date +'%Y-%m-%d_%H:%M:%S')
 BUILD_COMMIT = $(shell git rev-parse --short HEAD)
-AUDIT_FILE_NAME = audit.json
+AUDIT_FILE = audit.json
 
 .PHONY: run ping test migrate-up migrate-down migrate-create
 
@@ -24,16 +24,19 @@ run-file:
 
 # Запуск сервера с Postgres и файлом аудита
 run-pg:
-	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE_NAME)"
+	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE)"
 
 # То же, что run-pg, но с включённым pprof-сервером (MODE=debug)
 run-pg-debug:
 	export MODE=debug && \
-	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE_NAME)"
+	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE)"
 
 run-pg-ldflags:
 	go run -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$(BUILD_DATE) -X 'main.buildCommit=$(BUILD_COMMIT)'" \
-		$(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE_NAME)"
+		$(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE)"
+
+run-pg-https:
+	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" -s="TLS"
 
 # Сборка с передачей значений
 build-ldflags:
