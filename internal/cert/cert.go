@@ -1,4 +1,4 @@
-package certificate
+package cert
 
 import (
 	"bytes"
@@ -7,13 +7,15 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"log"
+	"fmt"
+	"log/slog"
 	"math/big"
 	"net"
+	"os"
 	"time"
 )
 
-func CreateCert() {
+func CreateCert() error {
 	// создаём шаблон сертификата
 	cert := &x509.Certificate{
 		// указываем уникальный номер сертификата
@@ -41,13 +43,13 @@ func CreateCert() {
 	// используется rand.Reader в качестве источника случайных данных
 	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("generate private key: %w", err)
 	}
 
 	// создаём сертификат x.509
 	certBytes, err := x509.CreateCertificate(rand.Reader, cert, cert, &privateKey.PublicKey, privateKey)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("create certificate: %w", err)
 	}
 
 	// кодируем сертификат и ключ в формате PEM, который
@@ -58,15 +60,50 @@ func CreateCert() {
 		Bytes: certBytes,
 	})
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	var privateKeyPEM bytes.Buffer
-	err = pem.Encode(&privateKeyPEM, &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
-	})
-	if err != nil {
-		log.Fatal(err)
+	if err = pem.Encode(&privateKeyPEM, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)}); err != nil {
+		return fmt.Errorf("encode private key: %w", err)
 	}
+
+	if err = os.WriteFile("cert.pem", certPEM.Bytes(), 0644); err != nil {
+		return fmt.Errorf("write cert file: %w", err)
+	}
+
+	if err = os.WriteFile("private.pem", privateKeyPEM.Bytes(), 0644); err != nil {
+		return fmt.Errorf("write private key file: %w", err)
+	}
+
+	return nil
+}
+
+func IsCertValid() bool {
+	certData, err := os.ReadFile("cert.pem")
+
+	if err != nil {
+		slog.Error("Ошибка чтение", "error", err)
+		return false
+	}
+
+	block, _ := pem.Decode(certData)
+	if block == nil {
+		slog.Error("не удалось декодировать PEM")
+		return false
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		slog.Error("не удалось распарсить сертификат:", "error", err)
+		return false
+	}
+
+	now := time.Now()
+	// проверяем, что текущее время попадает в период действия сертификата
+	if now.Before(cert.NotBefore) || now.After(cert.NotAfter) {
+		return false
+	}
+
+	return true
 }

@@ -28,3 +28,4 @@ vendor/
 file_storage.json
 audit.json
 staticlint
+*.pem

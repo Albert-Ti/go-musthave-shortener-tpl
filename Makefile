@@ -36,7 +36,7 @@ run-pg-ldflags:
 		$(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE)"
 
 run-pg-https:
-	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" -s="TLS"
+	go run $(RACE_FLAG) $(RUN_PATH) -s="TLS"
 
 # Сборка с передачей значений
 build-ldflags:

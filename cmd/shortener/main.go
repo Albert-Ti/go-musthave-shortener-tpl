@@ -9,6 +9,7 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/cert"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
 	myMiddleware "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
@@ -69,20 +70,41 @@ func main() {
 	r.Delete("/api/user/urls", handler.DeleteShortenURLs(svc))
 	r.Get("/ping", handler.PingDatabase(svc))
 
-	if opts.Mode == config.ModeDebug {
+	runPprof(opts.Mode)
+	runServer(*opts, r)
+}
+
+func runServer(opts config.Options, h http.Handler) {
+	var err error
+
+	slog.Info("Running server", "host", opts.RunAddr, "mode", opts.Mode)
+
+	if opts.EnableHTTPS != "" {
+		if !cert.IsCertValid() {
+			slog.Info("certificate missing or expired, generating a new one")
+			if errCert := cert.CreateCert(); errCert != nil {
+				panic(errCert)
+			}
+		}
+		err = http.ListenAndServeTLS(opts.RunAddr, "cert.pem", "private.pem", h)
+	} else {
+		err = http.ListenAndServe(opts.RunAddr, h)
+	}
+
+	if err != nil {
+		panic(err)
+	}
+}
+
+func runPprof(mode string) {
+	if mode == config.ModeDebug {
 		slog.Info("Running server pprof", "host", "localhost:6060")
+
 		go func() {
 			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
 				slog.Error("failed to Running server pprof", "error", err)
 			}
 		}()
-	}
-
-	slog.Info("Running server", "host", opts.RunAddr, "mode", opts.Mode)
-
-	errRun := http.ListenAndServe(opts.RunAddr, r)
-	if errRun != nil {
-		panic(errRun)
 	}
 }
 
