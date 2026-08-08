@@ -18,6 +18,10 @@ endif
 run:
 	go run $(RUN_PATH)
 
+# Помощь в запуске сервера с примерами.
+run-help:
+	go run $(RUN_PATH) -h
+
 # Запуск сервера с файловым хранилищем
 run-file:
 	go run $(RUN_PATH) -f="file_storage.json"
@@ -35,8 +39,11 @@ run-pg-ldflags:
 	go run -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$(BUILD_DATE) -X 'main.buildCommit=$(BUILD_COMMIT)'" \
 		$(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE)"
 
-run-pg-https:
+run-https:
 	go run $(RACE_FLAG) $(RUN_PATH) -s="TLS"
+
+run-pg-cfg:
+	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" -c="config.json"
 
 # Сборка с передачей значений
 build-ldflags:

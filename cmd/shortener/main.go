@@ -32,7 +32,11 @@ func main() {
 	fmt.Printf("\n  Build version: %s\n  Build date: %s\n  Build commit: %s\n \n",
 		buildVersion, buildDate, buildCommit)
 
-	opts := config.Build()
+	opts, errCfg := config.Build()
+	if errCfg != nil {
+		panic(errCfg)
+	}
+
 	repo, errRepo := repository.NewRepository(opts)
 	if errRepo != nil {
 		panic(errRepo)
@@ -78,8 +82,7 @@ func runServer(opts config.Options, h http.Handler) {
 	var err error
 
 	slog.Info("Running server", "host", opts.RunAddr, "mode", opts.Mode)
-
-	if opts.EnableHTTPS != "" {
+	if opts.EnableHTTPS {
 		if !cert.IsCertValid() {
 			slog.Info("certificate missing or expired, generating a new one")
 			if errCert := cert.CreateCert(); errCert != nil {

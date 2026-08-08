@@ -2,7 +2,10 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
+	"log/slog"
 	"os"
 )
 
@@ -12,8 +15,9 @@ const (
 	ModeProd  = "prod"
 )
 
-// Options хранит настройки приложения, собранные из флагов командной строки,
-// переменных окружения и значений по умолчанию.
+// Options хранит настройки приложения, собранные из флагов(высокий приоритет) командной строки,
+// переменных окружения(средний приоритет), файла конфигурации(низкий приоритет)
+// и значений по умолчанию.
 // generate:reset
 type Options struct {
 	RunAddr         string
@@ -24,18 +28,22 @@ type Options struct {
 	AuditFile       string
 	AuditURL        string
 	Mode            string
-	EnableHTTPS     string
+	EnableHTTPS     bool
+	ConfigFile      string
+}
+
+// FileConfig настройки приложения специально под JSON,
+// имеет приоритет (ниже флагов и env).
+type FileConfig struct {
+	RunAddr         string `json:"server_address"`
+	BaseURL         string `json:"base_url"`
+	FileStoragePath string `json:"file_storage_path"`
+	DatabaseDSN     string `json:"database_dsn"`
+	EnableHTTPS     bool   `json:"enable_https"`
 }
 
 // NewOptions создаёт Options со значениями по умолчанию и применяет
 // переданные опции (pattern Builder / функциональные опции).
-//
-// Пример использования:
-//
-//	cfg := config.NewOptions(
-//	    config.WithBaseURL("http://localhost:8080"),
-//	    config.WithFileStoragePath("storage.json"),
-//	)
 func NewOptions(opts ...func(*Options)) *Options {
 	o := &Options{
 		RunAddr:      "localhost:8080",
@@ -48,6 +56,64 @@ func NewOptions(opts ...func(*Options)) *Options {
 		opt(o)
 	}
 	return o
+}
+
+// Build собирает Options из флагов командной строки, переменных окружения
+// и файла конфигурации. Приоритет: явный флаг > env > файл конфига > дефолт.
+func Build() (*Options, error) {
+	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	customFlagUsage(fs)
+
+	var raw Options
+	fs.StringVar(&raw.RunAddr, "a", "localhost:8080", "адрес и порт запуска HTTP-сервера, например: -a=localhost:8080")
+	fs.StringVar(&raw.BaseURL, "b", "http://localhost:8080", "базовый адрес результирующего сокращённого URL, например: -b=http://localhost:8080")
+	fs.StringVar(&raw.FileStoragePath, "f", "", "путь к файлу для хранения данных в формате JSON, например: -f=/tmp/short-url-db.json")
+	fs.StringVar(&raw.DatabaseDSN, "d", "", "строка подключения к БД, например: -d=\"postgres://user:pass@localhost:5432/shortener\"")
+	fs.StringVar(&raw.AuditFile, "audit-file", "", "путь к файлу-приёмнику аудита, например: -audit-file=audit.log")
+	fs.StringVar(&raw.AuditURL, "audit-url", "", "URL удалённого сервера-приёмника аудита, например: -audit-url=http://localhost:9000/audit")
+	fs.BoolVar(&raw.EnableHTTPS, "s", false, "включить HTTPS (true/false), например: -s=true | 1")
+	fs.StringVar(&raw.ConfigFile, "c", "", "путь к файлу конфигурации в формате JSON, например: -c=config.json")
+
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		return nil, err
+	}
+
+	explicit := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) {
+		explicit[f.Name] = true
+	})
+
+	configPath := pickString(explicit["c"], "CONFIG", raw.ConfigFile, "")
+
+	var fc FileConfig
+	if configPath != "" {
+		parsed, err := parseConfigFile(configPath)
+		if err != nil {
+			slog.Error("parse config file", "path", configPath, "error", err)
+		} else {
+			fc = *parsed
+		}
+	}
+
+	opts := NewOptions()
+
+	opts.RunAddr = pickString(explicit["a"], "SERVER_ADDRESS", raw.RunAddr, fc.RunAddr)
+	opts.BaseURL = pickString(explicit["b"], "BASE_URL", raw.BaseURL, fc.BaseURL)
+	opts.AuditFile = pickString(explicit["audit-file"], "AUDIT_FILE", raw.AuditFile, "")
+	opts.AuditURL = pickString(explicit["audit-url"], "AUDIT_URL", raw.AuditURL, "")
+	opts.EnableHTTPS = pickBool(explicit["s"], "ENABLE_HTTPS", raw.EnableHTTPS, fc.EnableHTTPS)
+	opts.ConfigFile = configPath
+
+	filePath := pickString(explicit["f"], "FILE_STORAGE_PATH", raw.FileStoragePath, fc.FileStoragePath)
+	dsn := pickString(explicit["d"], "DATABASE_CONN_STRING", raw.DatabaseDSN, fc.DatabaseDSN)
+	if filePath != "" && !explicit["d"] {
+		dsn = ""
+	}
+	opts.FileStoragePath = filePath
+	opts.DatabaseDSN = dsn
+
+	return opts, nil
 }
 
 // WithRunAddr задаёт адрес и порт, на которых запускается сервер.
@@ -74,57 +140,68 @@ func WithAuditURL(v string) func(*Options) { return func(o *Options) { o.AuditUR
 // WithMode задаёт режим работы приложения (например, "dev" или "debug").
 func WithMode(v string) func(*Options) { return func(o *Options) { o.Mode = v } }
 
-// WithMode задаёт режим работы приложения (например, "dev" или "debug").
-func WithEnableHTTPS(v string) func(*Options) { return func(o *Options) { o.EnableHTTPS = v } }
+// WithEnableHTTPS задаёт режим работы протокола (http | https).
+func WithEnableHTTPS(v bool) func(*Options) { return func(o *Options) { o.EnableHTTPS = v } }
 
-// Build собирает Options из флагов командной строки и переменных окружения.
-// Флаг имеет приоритет, если задан явно; иначе используется переменная
-// окружения; иначе — значение по умолчанию.
-func Build() *Options {
-	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	var raw Options
-	fs.StringVar(&raw.RunAddr, "a", "localhost:8080", "address and port to run server")
-	fs.StringVar(&raw.BaseURL, "b", "http://localhost:8080", "Base URL")
-	fs.StringVar(&raw.FileStoragePath, "f", "", "file storage")
-	fs.StringVar(&raw.DatabaseDSN, "d", "", "connection string to DB")
-	fs.StringVar(&raw.AuditFile, "audit-file", "", "путь к файлу-приёмнику")
-	fs.StringVar(&raw.AuditURL, "audit-url", "", "URL удаленного сервера-приёмника")
-	fs.StringVar(&raw.EnableHTTPS, "s", "", "Включение HTTPS")
+// WithConfigFile задаёт конфигурацию приложения с помощью файла config.JSON.
+func WithConfigFile(v string) func(*Options) { return func(o *Options) { o.ConfigFile = v } }
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
-		panic(err)
-	}
-
-	explicit := map[string]bool{}
-	fs.Visit(func(f *flag.Flag) {
-		explicit[f.Name] = true
-	})
-
-	pick := func(flagName string, flagVal string, envStr string) string {
-		if explicit[flagName] {
-			return flagVal
-		}
-		if v := os.Getenv(envStr); v != "" {
-			return v
-		}
+func pickString(explicitFlag bool, envStr string, flagVal string, fileVal string) string {
+	if explicitFlag {
 		return flagVal
 	}
-
-	filePath := pick("f", raw.FileStoragePath, "FILE_STORAGE_PATH")
-
-	dsn := pick("d", raw.DatabaseDSN, "DATABASE_CONN_STRING")
-
-	if filePath != "" && !explicit["d"] {
-		dsn = ""
+	if v := os.Getenv(envStr); v != "" {
+		return v
 	}
+	if fileVal != "" {
+		return fileVal
+	}
+	return flagVal
+}
 
-	return NewOptions(
-		WithRunAddr(pick("a", raw.RunAddr, "SERVER_ADDRESS")),
-		WithBaseURL(pick("b", raw.BaseURL, "BASE_URL")),
-		WithFileStoragePath(filePath),
-		WithDatabaseDSN(dsn),
-		WithAuditFile(pick("audit-file", raw.AuditFile, "AUDIT_FILE")),
-		WithAuditURL(pick("audit-url", raw.AuditURL, "AUDIT_URL")),
-		WithEnableHTTPS(pick("s", raw.EnableHTTPS, "ENABLE_HTTPS")),
-	)
+func pickBool(explicitFlag bool, envStr string, flagVal bool, fileVal bool) bool {
+	if explicitFlag {
+		return flagVal
+	}
+	if v := os.Getenv(envStr); v != "" {
+		return v == "true" || v == "1"
+	}
+	return fileVal || flagVal
+}
+
+func parseConfigFile(fname string) (*FileConfig, error) {
+	file, err := os.Open(fname)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var fc FileConfig
+	if err := json.NewDecoder(file).Decode(&fc); err != nil {
+		return nil, err
+	}
+	return &fc, nil
+}
+
+func customFlagUsage(fs *flag.FlagSet) {
+	fmt.Fprintf(fs.Output(), `Использование: %s [флаги]
+
+Приоритет источников конфигурации (от высокого к низкому):
+  1. Флаг командной строки (если передан явно)
+  2. Переменная окружения
+  3. Файл конфигурации (JSON, путь через -c/-config или CONFIG)
+  4. Значение по умолчанию
+
+Флаги:
+`, os.Args[0])
+	fs.PrintDefaults()
+	fmt.Fprintf(fs.Output(), `
+Переменные окружения: SERVER_ADDRESS, BASE_URL, FILE_STORAGE_PATH,
+  DATABASE_DSN, AUDIT_FILE, AUDIT_URL, ENABLE_HTTPS, CONFIG
+
+Примеры:
+  %s -a=localhost:8080 -b=http://localhost:8080
+  %s -c=config.json
+  SERVER_ADDRESS=localhost:9090 %s
+`, os.Args[0], os.Args[0], os.Args[0])
 }
