@@ -75,7 +75,9 @@ func NewAuditor(auditFile string, auditURL string, bufSize int, workers int) (*A
 	}
 
 	// Горутина чтобы не блокировал вызов
-	go auditor.broadcast()
+	auditor.wg.Go(func() {
+		auditor.broadcast()
+	})
 
 	return auditor, nil
 }
