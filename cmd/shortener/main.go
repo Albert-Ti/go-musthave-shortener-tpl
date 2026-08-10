@@ -1,9 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	_ "embed"
 	_ "net/http/pprof"
@@ -75,40 +80,30 @@ func main() {
 	r.Get("/ping", handler.PingDatabase(svc))
 
 	runPprof(opts.Mode)
-	runServer(*opts, r)
-}
 
-func runServer(opts config.Options, h http.Handler) {
-	var err error
+	srv := &http.Server{Addr: opts.RunAddr}
+	idleConnsClosed := make(chan struct{})
 
-	slog.Info("Running server", "host", opts.RunAddr, "mode", opts.Mode)
-	if opts.EnableHTTPS {
-		if !cert.IsCertValid() {
-			slog.Info("certificate missing or expired, generating a new one")
-			if errCert := cert.CreateCert(); errCert != nil {
-				panic(errCert)
-			}
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigs
+		slog.Info("received", "signal", sig)
+		for range 2 {
+			slog.Info("shutting down...")
+			time.Sleep(time.Second)
 		}
-		err = http.ListenAndServeTLS(opts.RunAddr, "cert.pem", "private.pem", h)
-	} else {
-		err = http.ListenAndServe(opts.RunAddr, h)
-	}
+		if err := srv.Shutdown(context.Background()); err != nil {
+			slog.Error("server shutdown", "error", err)
+		}
+		close(idleConnsClosed)
+	}()
 
-	if err != nil {
-		panic(err)
-	}
-}
+	runServer(opts, srv)
+	<-idleConnsClosed
 
-func runPprof(mode string) {
-	if mode == config.ModeDebug {
-		slog.Info("Running server pprof", "host", "localhost:6060")
-
-		go func() {
-			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
-				slog.Error("failed to Running server pprof", "error", err)
-			}
-		}()
-	}
+	slog.Info("server shutdown gracefully")
 }
 
 func runMigrations(dsn string) error {
@@ -128,11 +123,47 @@ func runMigrations(dsn string) error {
 	errMigrate = m.Up()
 	switch errMigrate {
 	case nil:
-		slog.Info("Migrations applied successfully")
+		slog.Info("migrations applied successfully")
 	case migrate.ErrNoChange:
-		slog.Info("Database schema is up-to-date")
+		slog.Info("database schema is up-to-date")
 	default:
 		return errMigrate
 	}
 	return nil
+}
+
+func runPprof(mode string) {
+	if mode == config.ModeDebug {
+		slog.Info("running server pprof", "host", "localhost:6060")
+
+		go func() {
+			if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+				slog.Error("failed to Running server pprof", "error", err)
+			}
+		}()
+	}
+}
+
+func runServer(opts *config.Options, srv *http.Server) {
+	host := "http://" + opts.RunAddr
+	var errSrv error
+
+	if opts.EnableHTTPS {
+		host = "https://" + opts.RunAddr
+		if !cert.IsCertValid() {
+			slog.Info("certificate missing or expired, generating a new one")
+			if errCert := cert.CreateCert(); errCert != nil {
+				panic(errCert)
+			}
+		}
+		slog.Info("running server", "host", host)
+		errSrv = srv.ListenAndServeTLS("cert.pem", "private.pem")
+	} else {
+		slog.Info("running server", "host", host)
+		errSrv = srv.ListenAndServe()
+	}
+
+	if errSrv != nil && errSrv != http.ErrServerClosed {
+		panic(errSrv)
+	}
 }

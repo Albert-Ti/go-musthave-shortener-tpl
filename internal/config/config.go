@@ -4,7 +4,6 @@ package config
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"log/slog"
 	"os"
 )
@@ -62,8 +61,6 @@ func NewOptions(opts ...func(*Options)) *Options {
 // и файла конфигурации. Приоритет: явный флаг > env > файл конфига > дефолт.
 func Build() (*Options, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-
-	customFlagUsage(fs)
 
 	var raw Options
 	fs.StringVar(&raw.RunAddr, "a", "localhost:8080", "адрес и порт запуска HTTP-сервера, например: -a=localhost:8080")
@@ -181,27 +178,4 @@ func parseConfigFile(fname string) (*FileConfig, error) {
 		return nil, err
 	}
 	return &fc, nil
-}
-
-func customFlagUsage(fs *flag.FlagSet) {
-	fmt.Fprintf(fs.Output(), `Использование: %s [флаги]
-
-Приоритет источников конфигурации (от высокого к низкому):
-  1. Флаг командной строки (если передан явно)
-  2. Переменная окружения
-  3. Файл конфигурации (JSON, путь через -c/-config или CONFIG)
-  4. Значение по умолчанию
-
-Флаги:
-`, os.Args[0])
-	fs.PrintDefaults()
-	fmt.Fprintf(fs.Output(), `
-Переменные окружения: SERVER_ADDRESS, BASE_URL, FILE_STORAGE_PATH,
-  DATABASE_DSN, AUDIT_FILE, AUDIT_URL, ENABLE_HTTPS, CONFIG
-
-Примеры:
-  %s -a=localhost:8080 -b=http://localhost:8080
-  %s -c=config.json
-  SERVER_ADDRESS=localhost:9090 %s
-`, os.Args[0], os.Args[0], os.Args[0])
 }

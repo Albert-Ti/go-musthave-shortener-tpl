@@ -75,7 +75,7 @@ func NewAuditor(auditFile string, auditURL string, bufSize int, workers int) (*A
 	}
 
 	// Горутина чтобы не блокировал вызов
-	go auditor.broadcast()
+	auditor.broadcast()
 
 	return auditor, nil
 }
@@ -174,6 +174,10 @@ func (h *HTTPObserver) Notify(log AuditLog) {
 }
 
 func (a *Auditor) Close() {
+	if a == nil {
+		return
+	}
+
 	close(a.ch)
 	a.wg.Wait()
 }

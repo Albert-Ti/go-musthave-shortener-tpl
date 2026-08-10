@@ -40,7 +40,7 @@ run-pg-ldflags:
 		$(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE)"
 
 run-https:
-	go run $(RACE_FLAG) $(RUN_PATH) -s="TLS"
+	go run $(RACE_FLAG) $(RUN_PATH) -s="true"
 
 run-pg-cfg:
 	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" -c="config.json"

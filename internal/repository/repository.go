@@ -23,15 +23,15 @@ type Repository interface {
 
 func NewRepository(cfg *config.Options) (Repository, error) {
 	if cfg.DatabaseDSN != "" {
-		slog.Info("Using database storage")
+		slog.Info("using database storage")
 		return NewPostgresStorage(cfg.DatabaseDSN)
 	}
 
 	if cfg.FileStoragePath != "" {
-		slog.Debug("Using file storage", "filePath", cfg.FileStoragePath)
+		slog.Debug("using file storage", "filePath", cfg.FileStoragePath)
 		return NewFileStorage(cfg.FileStoragePath)
 	}
 
-	slog.Debug("Using memory storage")
+	slog.Debug("using memory storage")
 	return NewMemoryStorage()
 }
