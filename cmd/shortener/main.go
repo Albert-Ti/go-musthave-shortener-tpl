@@ -85,18 +85,20 @@ func main() {
 	idleConnsClosed := make(chan struct{})
 
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 
 	go func() {
 		sig := <-sigs
+		signal.Stop(sigs)
 		slog.Info("received", "signal", sig)
-		for range 2 {
-			slog.Info("shutting down...")
-			time.Sleep(time.Second)
-		}
-		if err := srv.Shutdown(context.Background()); err != nil {
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+
+		if err := srv.Shutdown(ctx); err != nil {
 			slog.Error("server shutdown", "error", err)
 		}
+
 		close(idleConnsClosed)
 	}()
 

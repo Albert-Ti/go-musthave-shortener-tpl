@@ -72,7 +72,7 @@ func CreateCert() error {
 		return fmt.Errorf("write cert file: %w", err)
 	}
 
-	if err = os.WriteFile("private.pem", privateKeyPEM.Bytes(), 0644); err != nil {
+	if err = os.WriteFile("private.pem", privateKeyPEM.Bytes(), 0600); err != nil {
 		return fmt.Errorf("write private key file: %w", err)
 	}
 

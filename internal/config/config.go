@@ -38,7 +38,7 @@ type FileConfig struct {
 	BaseURL         string `json:"base_url"`
 	FileStoragePath string `json:"file_storage_path"`
 	DatabaseDSN     string `json:"database_dsn"`
-	EnableHTTPS     bool   `json:"enable_https"`
+	EnableHTTPS     *bool  `json:"enable_https"`
 }
 
 // NewOptions создаёт Options со значениями по умолчанию и применяет
@@ -69,7 +69,7 @@ func Build() (*Options, error) {
 	fs.StringVar(&raw.DatabaseDSN, "d", "", "строка подключения к БД, например: -d=\"postgres://user:pass@localhost:5432/shortener\"")
 	fs.StringVar(&raw.AuditFile, "audit-file", "", "путь к файлу-приёмнику аудита, например: -audit-file=audit.log")
 	fs.StringVar(&raw.AuditURL, "audit-url", "", "URL удалённого сервера-приёмника аудита, например: -audit-url=http://localhost:9000/audit")
-	fs.BoolVar(&raw.EnableHTTPS, "s", false, "включить HTTPS (true/false), например: -s=true | 1")
+	fs.BoolVar(&raw.EnableHTTPS, "s", true, "включить HTTPS (true/false), например: -s=true | 1")
 	fs.StringVar(&raw.ConfigFile, "c", "", "путь к файлу конфигурации в формате JSON, например: -c=config.json")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -156,14 +156,18 @@ func pickString(explicitFlag bool, envStr string, flagVal string, fileVal string
 	return flagVal
 }
 
-func pickBool(explicitFlag bool, envStr string, flagVal bool, fileVal bool) bool {
+func pickBool(explicitFlag bool, envStr string, flagVal bool, fileVal *bool) bool {
 	if explicitFlag {
 		return flagVal
 	}
 	if v := os.Getenv(envStr); v != "" {
 		return v == "true" || v == "1"
 	}
-	return fileVal || flagVal
+
+	if fileVal != nil {
+		return *fileVal
+	}
+	return flagVal
 }
 
 func parseConfigFile(fname string) (*FileConfig, error) {
