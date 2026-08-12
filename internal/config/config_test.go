@@ -6,14 +6,36 @@ import (
 
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+var configStr = `{
+  "server_address": "localhost:8080",
+  "base_url": "http://localhost",
+  "file_storage_path": "/path/to/file.db",
+  "database_dsn": "",
+  "enable_https": true
+}`
+
+func CreateConfigFileTmp() error {
+
+	err := os.WriteFile("testCfg.json", []byte(configStr), 0666)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func TestBuild(t *testing.T) {
+	defer os.Remove("testCfg.json")
+
 	type want struct {
 		runAddr  string
 		baseURL  string
 		filePath string
 		dsn      string
+		https    bool
 	}
 
 	allEnvKeys := []string{
@@ -93,6 +115,20 @@ func TestBuild(t *testing.T) {
 				dsn: "postgres://localhost/db",
 			},
 		},
+		{
+			name: "Test HTTPS",
+			args: []string{"test", "-s=true"},
+			want: want{
+				https: true,
+			},
+		},
+		{
+			name: "Test file config",
+			args: []string{"test", "-c=testCfg.json"},
+			want: want{
+				filePath: "/path/to/file.db",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -108,7 +144,13 @@ func TestBuild(t *testing.T) {
 			defer func() { os.Args = origArgs }()
 			os.Args = tt.args
 
-			cfg := config.Build()
+			if tt.name == "Test file config" {
+				err := CreateConfigFileTmp()
+				require.NoError(t, err)
+			}
+
+			cfg, err := config.Build()
+			require.NoError(t, err)
 
 			if tt.want.runAddr != "" {
 				assert.Equal(t, tt.want.runAddr, cfg.RunAddr)

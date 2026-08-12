@@ -4,7 +4,7 @@ MIGRATIONS_PATH = ./migrations
 PPROF_FILE_PATH = profiles/base.pprof
 BUILD_DATE = $(shell date +'%Y-%m-%d_%H:%M:%S')
 BUILD_COMMIT = $(shell git rev-parse --short HEAD)
-AUDIT_FILE_NAME = audit.json
+AUDIT_FILE = audit.json
 
 .PHONY: run ping test migrate-up migrate-down migrate-create
 
@@ -18,22 +18,32 @@ endif
 run:
 	go run $(RUN_PATH)
 
+# Помощь в запуске сервера с примерами.
+run-help:
+	go run $(RUN_PATH) -h
+
 # Запуск сервера с файловым хранилищем
 run-file:
 	go run $(RUN_PATH) -f="file_storage.json"
 
 # Запуск сервера с Postgres и файлом аудита
 run-pg:
-	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE_NAME)"
+	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE)"
 
 # То же, что run-pg, но с включённым pprof-сервером (MODE=debug)
 run-pg-debug:
 	export MODE=debug && \
-	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE_NAME)"
+	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE)"
 
 run-pg-ldflags:
 	go run -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$(BUILD_DATE) -X 'main.buildCommit=$(BUILD_COMMIT)'" \
-		$(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE_NAME)"
+		$(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE)"
+
+run-https:
+	go run $(RACE_FLAG) $(RUN_PATH) -s="true"
+
+run-pg-cfg:
+	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" -c="config.json"
 
 # Сборка с передачей значений
 build-ldflags:
