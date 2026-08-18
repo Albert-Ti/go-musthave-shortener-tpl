@@ -82,7 +82,7 @@ func main() {
 
 	runPprof(opts.Mode)
 
-	srv := &http.Server{Addr: opts.RunAddr}
+	srv := &http.Server{Addr: opts.RunAddr, Handler: r}
 	idleConnsClosed := make(chan struct{})
 
 	sigs := make(chan os.Signal, 1)
