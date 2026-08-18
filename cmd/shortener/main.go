@@ -77,6 +77,7 @@ func main() {
 	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(svc))
 	r.Get("/api/user/urls", handler.GetShortenURLs(svc))
 	r.Delete("/api/user/urls", handler.DeleteShortenURLs(svc))
+	r.Get("/api/internal/stats", handler.GetStats(svc, opts.TrustedSubnet))
 	r.Get("/ping", handler.PingDatabase(svc))
 
 	runPprof(opts.Mode)
