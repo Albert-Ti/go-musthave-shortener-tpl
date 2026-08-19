@@ -69,7 +69,7 @@ func main() {
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(myMiddleware.WithLogging)
 	r.Use(myMiddleware.GzipCompress)
-	r.Use(myMiddleware.AuthGuard(opts.JWTSecretKey))
+	r.Use(myMiddleware.AuthGuard(opts.JWTSecretKey, opts.DatabaseDSN == ""))
 
 	r.Post("/", handler.CreateShortenURL(svc, auditor, opts.BaseURL))
 	r.Get("/{id}", handler.RedirectByKeyURL(svc, auditor, opts.BaseURL))

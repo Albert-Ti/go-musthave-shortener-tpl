@@ -16,6 +16,8 @@ type UserIDType string
 // UserIDKey — ключ контекста.
 const UserIDKey UserIDType = "userID"
 
+var countUsers map[string]struct{}
+
 // MyCustomClaims расширяет стандартные claims jwt.RegisteredClaims полем UserID,
 // чтобы связать выданный токен с конкретным пользователем сервиса.
 // generate:reset
@@ -63,7 +65,10 @@ func createCookie(name string, value string) *http.Cookie {
 //
 //	r := chi.NewRouter()
 //	r.Use(middleware.AuthGuard(cfg.JWTSecretKey))
-func AuthGuard(secretKey string) func(http.Handler) http.Handler {
+func AuthGuard(secretKey string, isNotPostgres bool) func(http.Handler) http.Handler {
+	if isNotPostgres {
+		countUsers = map[string]struct{}{}
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqCookie, err := r.Cookie("token")
@@ -81,6 +86,7 @@ func AuthGuard(secretKey string) func(http.Handler) http.Handler {
 
 				newCookie := createCookie("token", tokenString)
 				http.SetCookie(w, newCookie)
+
 			} else {
 				claims := &MyCustomClaims{}
 
@@ -100,6 +106,12 @@ func AuthGuard(secretKey string) func(http.Handler) http.Handler {
 				authorizedUserID = claims.UserID
 			}
 
+			if isNotPostgres {
+				if _, ok := countUsers[authorizedUserID]; !ok {
+					countUsers[authorizedUserID] = struct{}{}
+				}
+			}
+
 			ctx := context.WithValue(r.Context(), UserIDKey, authorizedUserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -113,4 +125,8 @@ func GetAuthUserID(ctx context.Context) (string, error) {
 		return "", errors.New("user id not found")
 	}
 	return userID, nil
+}
+
+func GetCountUsers() int {
+	return len(countUsers)
 }

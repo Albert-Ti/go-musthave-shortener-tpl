@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 )
@@ -35,6 +36,13 @@ func (ms *memoryStorage) GetAll(ctx context.Context, userID string) ([]map[strin
 	}
 
 	return results, nil
+}
+
+func (ms *memoryStorage) GetStats(ctx context.Context) (model.StatsResp, error) {
+	return model.StatsResp{
+		URLs:  len(ms.urls),
+		Users: middleware.GetCountUsers(),
+	}, nil
 }
 
 func (ms *memoryStorage) Save(ctx context.Context, key string, url string, userID string) (string, error) {

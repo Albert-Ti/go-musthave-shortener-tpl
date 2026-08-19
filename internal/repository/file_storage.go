@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/model"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 )
@@ -75,6 +76,13 @@ func (fs *fileStorage) GetAll(ctx context.Context, userID string) ([]map[string]
 	}
 
 	return results, nil
+}
+
+func (fs *fileStorage) GetStats(ctx context.Context) (model.StatsResp, error) {
+	return model.StatsResp{
+		URLs:  len(fs.urls),
+		Users: middleware.GetCountUsers(),
+	}, nil
 }
 
 func (fs *fileStorage) Save(ctx context.Context, key string, url string, userID string) (string, error) {
