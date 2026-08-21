@@ -147,6 +147,9 @@ func WithEnableHTTPS(v bool) func(*Options) { return func(o *Options) { o.Enable
 // WithConfigFile задаёт конфигурацию приложения с помощью файла config.JSON.
 func WithConfigFile(v string) func(*Options) { return func(o *Options) { o.ConfigFile = v } }
 
+// WithTrustedSubnet задаёт строковое представление бесклассовой адресации (CIDR).
+func WithTrustedSubnet(v string) func(*Options) { return func(o *Options) { o.TrustedSubnet = v } }
+
 func pickString(explicitFlag bool, envStr string, flagVal string, fileVal string) string {
 	if explicitFlag {
 		return flagVal

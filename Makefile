@@ -42,8 +42,8 @@ run-pg-ldflags:
 run-https:
 	go run $(RACE_FLAG) $(RUN_PATH) -s="true"
 
-run-subnet:
-	go run $(RACE_FLAG) $(RUN_PATH) -t="true"
+run-pg-subnet:
+	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" -t="192.168.1.0/24"
 
 run-pg-cfg:
 	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" -c="config.json"
