@@ -57,32 +57,17 @@ func main() {
 	}
 
 	svc := service.NewService(repo, opts)
-	r := chi.NewRouter()
-
 	auditor, errAudit := audit.NewAuditor(opts.AuditFile, opts.AuditURL, 20, 100)
 	if errAudit != nil {
 		panic(errAudit)
 	}
 	defer auditor.Close()
 
-	r.Use(chiMiddleware.RealIP)
-	r.Use(chiMiddleware.Recoverer)
-	r.Use(myMiddleware.WithLogging)
-	r.Use(myMiddleware.GzipCompress)
-	r.Use(myMiddleware.AuthGuard(opts.JWTSecretKey, opts.DatabaseDSN == ""))
-
-	r.Post("/", handler.CreateShortenURL(svc, auditor, opts.BaseURL))
-	r.Get("/{id}", handler.RedirectByKeyURL(svc, auditor, opts.BaseURL))
-	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc, auditor, opts.BaseURL))
-	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(svc))
-	r.Get("/api/user/urls", handler.GetShortenURLs(svc))
-	r.Delete("/api/user/urls", handler.DeleteShortenURLs(svc))
-	r.Get("/api/internal/stats", handler.GetStats(svc, opts.TrustedSubnet))
-	r.Get("/ping", handler.PingDatabase(svc))
-
 	runPprof(opts.Mode)
 
-	srv := &http.Server{Addr: opts.RunAddr, Handler: r}
+	shortener := &shortener{}
+	shortener.HTTPStart(svc, auditor, opts)
+
 	idleConnsClosed := make(chan struct{})
 
 	sigs := make(chan os.Signal, 1)
@@ -96,14 +81,14 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 
-		if err := srv.Shutdown(ctx); err != nil {
+		if err := shortener.http.shutdown(ctx); err != nil {
 			slog.Error("server shutdown", "error", err)
 		}
 
 		close(idleConnsClosed)
 	}()
 
-	runServer(opts, srv)
+	shortener.http.run(opts)
 	<-idleConnsClosed
 
 	slog.Info("server shutdown gracefully")
@@ -147,7 +132,11 @@ func runPprof(mode string) {
 	}
 }
 
-func runServer(opts *config.Options, srv *http.Server) {
+type HTTPServer struct {
+	srv *http.Server
+}
+
+func (h *HTTPServer) run(opts *config.Options) {
 	host := "http://" + opts.RunAddr
 	var errSrv error
 
@@ -160,13 +149,44 @@ func runServer(opts *config.Options, srv *http.Server) {
 			}
 		}
 		slog.Info("running server", "host", host)
-		errSrv = srv.ListenAndServeTLS("cert.pem", "private.pem")
+		errSrv = h.srv.ListenAndServeTLS("cert.pem", "private.pem")
 	} else {
 		slog.Info("running server", "host", host)
-		errSrv = srv.ListenAndServe()
+		errSrv = h.srv.ListenAndServe()
 	}
 
 	if errSrv != nil && errSrv != http.ErrServerClosed {
 		panic(errSrv)
+	}
+}
+
+func (h *HTTPServer) shutdown(ctx context.Context) error {
+	return h.srv.Shutdown(ctx)
+}
+
+type shortener struct {
+	http *HTTPServer
+}
+
+func (s *shortener) HTTPStart(svc *service.Service, auditor *audit.Auditor, opts *config.Options) {
+	r := chi.NewRouter()
+	r.Use(chiMiddleware.RealIP)
+	r.Use(chiMiddleware.Recoverer)
+	r.Use(myMiddleware.WithLogging)
+	r.Use(myMiddleware.GzipCompress)
+	r.Use(myMiddleware.AuthGuard(opts.JWTSecretKey, opts.DatabaseDSN == ""))
+
+	r.Post("/", handler.CreateShortenURL(svc, auditor, opts.BaseURL))
+	r.Get("/{id}", handler.RedirectByKeyURL(svc, auditor, opts.BaseURL))
+	r.Post("/api/shorten", handler.CreateShortenURLJSON(svc, auditor, opts.BaseURL))
+	r.Post("/api/shorten/batch", handler.CreateShortenURLBatch(svc))
+	r.Get("/api/user/urls", handler.GetShortenURLs(svc))
+	r.Delete("/api/user/urls", handler.DeleteShortenURLs(svc))
+	r.Get("/api/internal/stats", handler.GetStats(svc, opts.TrustedSubnet))
+	r.Get("/ping", handler.PingDatabase(svc))
+
+	s.http = &HTTPServer{
+		srv: &http.Server{Addr: opts.RunAddr,
+			Handler: r},
 	}
 }
