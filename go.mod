@@ -8,6 +8,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/golang/mock v1.6.0
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/kisielk/errcheck v1.20.0
 	github.com/securego/gosec/v2 v2.28.0
@@ -15,6 +16,7 @@ require (
 	github.com/timakin/bodyclose v0.0.0-20260129054331-73d1f95b84b4
 	golang.org/x/tools v0.48.0
 	google.golang.org/grpc v1.82.0
+	google.golang.org/protobuf v1.36.11
 	honnef.co/go/tools v0.7.0
 )
 
@@ -42,6 +44,5 @@ require (
 	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/tools/go/packages/packagestest v0.1.1-deprecated // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

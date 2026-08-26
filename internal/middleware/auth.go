@@ -5,8 +5,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"time"
 
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/token"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -17,28 +17,6 @@ type UserIDType string
 const UserIDKey UserIDType = "userID"
 
 var countUsers map[string]struct{}
-
-// MyCustomClaims расширяет стандартные claims jwt.RegisteredClaims полем UserID,
-// чтобы связать выданный токен с конкретным пользователем сервиса.
-// generate:reset
-type MyCustomClaims struct {
-	jwt.RegisteredClaims
-	UserID string
-}
-
-// createToken подписывает новый JWT алгоритмом HS256 с claim UserID и сроком.
-func createToken(userID string, secretKey string) (string, error) {
-	t := jwt.New(jwt.SigningMethodHS256)
-
-	t.Claims = &MyCustomClaims{
-		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-		},
-		userID,
-	}
-
-	return t.SignedString([]byte(secretKey))
-}
 
 // createCookie создаёт HttpOnly-cookie с заданными именем и значением.
 func createCookie(name string, value string) *http.Cookie {
@@ -78,7 +56,7 @@ func AuthGuard(secretKey string, isNotPostgres bool) func(http.Handler) http.Han
 				slog.Error("cookie error", "error", err)
 				authorizedUserID = utils.GenerateUUID()
 
-				tokenString, err := createToken(authorizedUserID, secretKey)
+				tokenString, err := token.CreateToken(authorizedUserID, secretKey)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -88,7 +66,7 @@ func AuthGuard(secretKey string, isNotPostgres bool) func(http.Handler) http.Han
 				http.SetCookie(w, newCookie)
 
 			} else {
-				claims := &MyCustomClaims{}
+				claims := &token.MyCustomClaims{}
 
 				token, err := jwt.ParseWithClaims(
 					reqCookie.Value,

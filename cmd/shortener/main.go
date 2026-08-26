@@ -64,6 +64,7 @@ func main() {
 	}
 
 	svc := service.NewService(repo, opts)
+
 	auditor, errAudit := audit.NewAuditor(opts.AuditFile, opts.AuditURL, 20, 100)
 	if errAudit != nil {
 		panic(errAudit)
@@ -88,16 +89,13 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	shortener.grpc.server.GracefulStop()
-	if err := shortener.http.shutdown(ctx); err != nil {
-		slog.Error("server shutdown", "error", err)
-	}
+	shortener.http.shutdown(ctx)
+	shortener.grpc.shutdown(ctx)
 
 	close(idleConnsClosed)
 
 	<-idleConnsClosed
 
-	slog.Info("server shutdown gracefully")
 }
 
 func runMigrations(dsn string) error {
@@ -191,9 +189,19 @@ func (s *shortener) grpcStart(svc *service.Service, auditor *audit.Auditor, opts
 		if err != nil {
 			panic(err)
 		}
-		srv = grpc.NewServer(grpc.UnaryInterceptor(interceptor.Auth), grpc.Creds(transportCreds))
+		srv = grpc.NewServer(
+			grpc.ChainUnaryInterceptor(
+				interceptor.Auth(opts.JWTSecretKey),
+				interceptor.Logging(),
+			),
+			grpc.Creds(transportCreds),
+		)
 	} else {
-		srv = grpc.NewServer(grpc.UnaryInterceptor(interceptor.Auth))
+		srv = grpc.NewServer(
+			grpc.ChainUnaryInterceptor(
+				interceptor.Auth(opts.JWTSecretKey),
+				interceptor.Logging(),
+			))
 	}
 
 	s.grpc = &grpcServer{
@@ -224,8 +232,13 @@ type httpServer struct {
 	*http.Server
 }
 
-func (h *httpServer) shutdown(ctx context.Context) error {
-	return h.Shutdown(ctx)
+func (h *httpServer) shutdown(ctx context.Context) {
+	err := h.Shutdown(ctx)
+	if err != nil {
+		slog.Error("HTTP server shutdown", "error", err)
+		return
+	}
+	slog.Info("HTTP server shutdown gracefully")
 }
 
 type grpcServer struct {
@@ -236,6 +249,7 @@ type grpcServer struct {
 }
 
 func (g *grpcServer) ShortenURL(ctx context.Context, in *pb.URLShortenRequest) (*pb.URLShortenResponse, error) {
+
 	// g.Svc.Save(ctx, in.GetUrl(), )
 	return nil, nil
 }
@@ -246,4 +260,10 @@ func (g *grpcServer) ExpandURL(ctx context.Context, in *pb.URLExpandRequest) (*p
 
 func (g *grpcServer) ListUserURLs(ctx context.Context, empty *emptypb.Empty) (*pb.UserURLsResponse, error) {
 	return nil, nil
+}
+
+func (g *grpcServer) shutdown(ctx context.Context) {
+	g.server.GracefulStop()
+
+	slog.Info("gRPC server shutdown gracefully")
 }
