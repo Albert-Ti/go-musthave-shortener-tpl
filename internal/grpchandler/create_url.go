@@ -1,5 +1,0 @@
-package grpchandler
-
-func CreateURL() {
-
-}

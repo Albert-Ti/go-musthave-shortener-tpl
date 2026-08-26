@@ -10,7 +10,6 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 
 	pb "github.com/Albert-Ti/go-musthave-shortener-tpl/pkg/proto"
 )
@@ -53,13 +52,6 @@ func clientInterceptor(
 
 	// вызываем RPC-метод
 	err := invoker(ctx, method, req, reply, cc, opts...)
-
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		values := md.Get("token")
-		if len(values) > 0 {
-			fmt.Println(values[0])
-		}
-	}
 
 	// выполняем действия после вызова метода
 	if err != nil {

@@ -2,6 +2,7 @@ package interceptor
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -40,6 +41,7 @@ func Logging() grpc.UnaryServerInterceptor {
 			slog.Int("code_value", int(statusCode)),
 		)
 
+		fmt.Println(statusCode)
 		switch {
 		case statusCode >= codes.Internal: // 5xx
 			logger.Error("gRPC request failed",

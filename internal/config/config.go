@@ -49,8 +49,8 @@ type FileConfig struct {
 func NewOptions(opts ...func(*Options)) *Options {
 	o := &Options{
 		RunAddr:      "localhost:8080",
-		GRPCRunAddr:  "localhost:3200",
 		BaseURL:      "http://localhost:8080",
+		GRPCRunAddr:  "localhost:3200",
 		JWTSecretKey: "jwt_secret_key",
 		Mode:         ModeDev,
 	}

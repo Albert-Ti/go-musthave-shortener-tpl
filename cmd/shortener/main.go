@@ -17,6 +17,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/cert"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/grpchandler"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/interceptor"
 	myMiddleware "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
@@ -29,7 +30,6 @@ import (
 	pb "github.com/Albert-Ti/go-musthave-shortener-tpl/pkg/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 var (
@@ -90,7 +90,7 @@ func main() {
 	defer cancel()
 
 	shortener.http.shutdown(ctx)
-	shortener.grpc.shutdown(ctx)
+	shortener.grpc.Shutdown()
 
 	close(idleConnsClosed)
 
@@ -126,7 +126,7 @@ func runMigrations(dsn string) error {
 
 type shortener struct {
 	http *httpServer
-	grpc *grpcServer
+	grpc *grpchandler.GrpcServer
 }
 
 func (s *shortener) httpStart(svc *service.Service, auditor *audit.Auditor, opts *config.Options) {
@@ -204,10 +204,16 @@ func (s *shortener) grpcStart(svc *service.Service, auditor *audit.Auditor, opts
 			))
 	}
 
-	s.grpc = &grpcServer{
-		server:  srv,
-		svc:     svc,
-		auditor: auditor,
+	var schema = "http://"
+	if !opts.EnableHTTPS {
+		schema = "https://"
+	}
+
+	s.grpc = &grpchandler.GrpcServer{
+		Server:  srv,
+		Svc:     svc,
+		Auditor: auditor,
+		BaseURL: schema + opts.GRPCRunAddr,
 	}
 
 	pb.RegisterShortenerServiceServer(srv, s.grpc)
@@ -239,31 +245,4 @@ func (h *httpServer) shutdown(ctx context.Context) {
 		return
 	}
 	slog.Info("HTTP server shutdown gracefully")
-}
-
-type grpcServer struct {
-	pb.UnimplementedShortenerServiceServer
-	server  *grpc.Server
-	auditor *audit.Auditor
-	svc     *service.Service
-}
-
-func (g *grpcServer) ShortenURL(ctx context.Context, in *pb.URLShortenRequest) (*pb.URLShortenResponse, error) {
-
-	// g.Svc.Save(ctx, in.GetUrl(), )
-	return nil, nil
-}
-
-func (g *grpcServer) ExpandURL(ctx context.Context, in *pb.URLExpandRequest) (*pb.URLExpandResponse, error) {
-	return nil, nil
-}
-
-func (g *grpcServer) ListUserURLs(ctx context.Context, empty *emptypb.Empty) (*pb.UserURLsResponse, error) {
-	return nil, nil
-}
-
-func (g *grpcServer) shutdown(ctx context.Context) {
-	g.server.GracefulStop()
-
-	slog.Info("gRPC server shutdown gracefully")
 }
