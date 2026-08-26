@@ -1,8 +1,10 @@
-edition = "2023";
+syntax = "proto3";
 
 package shortener;
 
-option go_package = "github.com/Albert-Ti/go-musthave-shortener-tpl/proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/Albert-Ti/go-musthave-shortener-tpl/pkg/proto";
 
 message URLShortenRequest {
   string url = 1;
