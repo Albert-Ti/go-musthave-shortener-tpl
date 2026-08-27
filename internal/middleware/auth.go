@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/token"
+	mytoken "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/token"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -56,7 +56,7 @@ func AuthGuard(secretKey string, isNotPostgres bool) func(http.Handler) http.Han
 				slog.Error("cookie error", "error", err)
 				authorizedUserID = utils.GenerateUUID()
 
-				tokenString, err := token.CreateToken(authorizedUserID, secretKey)
+				tokenString, err := mytoken.CreateToken(authorizedUserID, secretKey)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -66,7 +66,7 @@ func AuthGuard(secretKey string, isNotPostgres bool) func(http.Handler) http.Han
 				http.SetCookie(w, newCookie)
 
 			} else {
-				claims := &token.MyCustomClaims{}
+				claims := &mytoken.MyCustomClaims{}
 
 				token, err := jwt.ParseWithClaims(
 					reqCookie.Value,

@@ -58,7 +58,7 @@ ping:
 
 # Запуск всех тестов
 test:
-	go $(RACE_FLAG) test ./...
+	go $(RACE_FLAG) test ./... -v
 
 # Запуск всех бенчмарк тестов
 test-bench:

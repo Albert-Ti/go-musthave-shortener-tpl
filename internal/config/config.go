@@ -119,7 +119,7 @@ func Build() (*Options, error) {
 	return opts, nil
 }
 
-// WithRunAddr задаёт адрес и порт, на которых запускается сервер.
+// WithRunAddr задаёт адрес и порт, на которых запускается сервер HTTP.
 func WithRunAddr(v string) func(*Options) { return func(o *Options) { o.RunAddr = v } }
 
 // WithBaseURL задаёт базовый URL, используемый при формировании коротких ссылок.
@@ -151,6 +151,9 @@ func WithConfigFile(v string) func(*Options) { return func(o *Options) { o.Confi
 
 // WithTrustedSubnet задаёт строковое представление бесклассовой адресации (CIDR).
 func WithTrustedSubnet(v string) func(*Options) { return func(o *Options) { o.TrustedSubnet = v } }
+
+// WithGRPCRunAddr задаёт адрес и порт, на которых запускается сервер GRPC.
+func WithGRPCRunAddr(v string) func(*Options) { return func(o *Options) { o.GRPCRunAddr = v } }
 
 func pickString(explicitFlag bool, envStr string, flagVal string, fileVal string) string {
 	if explicitFlag {

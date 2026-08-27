@@ -2,7 +2,6 @@ package interceptor
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -11,7 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// LoggingInterceptor - интерцептор для логирования gRPC запросов
+// LoggingInterceptor - интерцептор для логирования gRPC запросов.
 func Logging() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		start := time.Now()
@@ -41,7 +40,6 @@ func Logging() grpc.UnaryServerInterceptor {
 			slog.Int("code_value", int(statusCode)),
 		)
 
-		fmt.Println(statusCode)
 		switch {
 		case statusCode >= codes.Internal: // 5xx
 			logger.Error("gRPC request failed",
@@ -52,7 +50,7 @@ func Logging() grpc.UnaryServerInterceptor {
 				slog.String("error", err.Error()),
 			)
 		default:
-			logger.Info("gRPC")
+			logger.Info("gRPC request success")
 		}
 
 		return resp, err

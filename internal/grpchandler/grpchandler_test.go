@@ -8,8 +8,12 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "github.com/Albert-Ti/go-musthave-shortener-tpl/pkg/proto"
 
@@ -17,8 +21,10 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/grpchandler"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/interceptor"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository/mocks"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/token"
 )
 
 const bufSize = 1024 * 1024
@@ -30,7 +36,7 @@ func newTestGRPCServer(t *testing.T, svc *service.Service, auditor *audit.Audito
 
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			interceptor.Auth(opts.JWTSecretKey),
+			interceptor.AuthGuard(opts.JWTSecretKey),
 			interceptor.Logging(),
 		),
 	)
@@ -59,16 +65,12 @@ func newTestGRPCServer(t *testing.T, svc *service.Service, auditor *audit.Audito
 	return pb.NewShortenerServiceClient(conn)
 }
 
-func TestCreateURL(t *testing.T) {
+func TestShortenURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockRepo := mocks.NewMockRepository(ctrl)
 
-	mockRepo.EXPECT().
-		Save(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		Times(1)
-
-	opts := config.NewOptions(config.WithBaseURL("http://localhost:8080"))
+	opts := config.NewOptions(config.WithGRPCRunAddr("localhost:3200"))
 	svc := service.NewService(mockRepo, opts)
 	auditor, err := audit.NewAuditor("", "", 1, 1)
 
@@ -76,9 +78,201 @@ func TestCreateURL(t *testing.T) {
 
 	client := newTestGRPCServer(t, svc, auditor, opts)
 
-	req := pb.URLShortenRequest_builder{Url: "https://example.com"}.Build()
-	resp, err := client.ShortenURL(context.Background(), req)
+	validToken, err := token.CreateToken("123", opts.JWTSecretKey)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		wantCode  codes.Code
+		setupMock func(mock *mocks.MockRepository)
+	}{
+		{
+			name:     "Case OK",
+			wantCode: codes.OK,
+			setupMock: func(mock *mocks.MockRepository) {
+				mockRepo.EXPECT().
+					Save(gomock.Any(), gomock.Any(), "https://example.com", "123").
+					Return("key_1", nil).
+					Times(1)
+			},
+		},
+
+		{
+			name:     "Case already exists",
+			wantCode: codes.AlreadyExists,
+			setupMock: func(mock *mocks.MockRepository) {
+				mockRepo.EXPECT().
+					Save(gomock.Any(), gomock.Any(), "https://example.com", "123").
+					Return("", repository.ErrConflict).
+					Times(1)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := pb.URLShortenRequest_builder{Url: "https://example.com"}.Build()
+
+			tt.setupMock(mockRepo)
+
+			md := metadata.Pairs("authorization", validToken)
+			grpcCtx := metadata.NewOutgoingContext(context.Background(), md)
+
+			resp, err := client.ShortenURL(grpcCtx, req)
+
+			st, ok := status.FromError(err)
+			require.True(t, ok)
+			require.Equal(t, tt.wantCode, st.Code())
+
+			if tt.name == "Case OK" {
+				require.NotEmpty(t, resp.GetResult())
+
+			}
+		})
+	}
+}
+
+func TestListUserURLs(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockRepo := mocks.NewMockRepository(ctrl)
+
+	opts := config.NewOptions(
+		config.WithGRPCRunAddr("localhost:3200"),
+	)
+
+	svc := service.NewService(mockRepo, opts)
+	auditor, err := audit.NewAuditor("", "", 1, 1)
 
 	require.NoError(t, err)
-	require.NotEmpty(t, resp.GetResult())
+
+	client := newTestGRPCServer(t, svc, auditor, opts)
+
+	validToken, err := token.CreateToken("123", opts.JWTSecretKey)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		wantCode  codes.Code
+		setupMock func(mock *mocks.MockRepository)
+	}{
+		{
+			name:     "Case OK",
+			wantCode: codes.OK,
+			setupMock: func(mock *mocks.MockRepository) {
+				mock.EXPECT().
+					GetAll(gomock.Any(), "123").
+					Return([]map[string]string{{
+						"key": "http://localhost:8080/key_1",
+						"url": "https://google.com",
+					},
+					}, nil).Times(1)
+			},
+		},
+		{
+			name:     "Case NotFound",
+			wantCode: codes.NotFound,
+			setupMock: func(mock *mocks.MockRepository) {
+				mock.EXPECT().
+					GetAll(gomock.Any(), "123").
+					Times(1)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock(mockRepo)
+
+			md := metadata.Pairs("authorization", validToken)
+			grpcCtx := metadata.NewOutgoingContext(context.Background(), md)
+			resp, err := client.ListUserURLs(grpcCtx, &emptypb.Empty{})
+
+			st, ok := status.FromError(err)
+			require.True(t, ok)
+			require.Equal(t, tt.wantCode, st.Code())
+
+			if tt.wantCode == codes.OK {
+				require.NotEmpty(t, resp.GetUrl())
+			}
+		})
+	}
+}
+
+func TestExpandURL(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockRepo := mocks.NewMockRepository(ctrl)
+
+	opts := config.NewOptions(
+		config.WithGRPCRunAddr("localhost:3200"),
+	)
+
+	svc := service.NewService(mockRepo, opts)
+	auditor, err := audit.NewAuditor("", "", 1, 1)
+
+	require.NoError(t, err)
+
+	client := newTestGRPCServer(t, svc, auditor, opts)
+
+	validToken, err := token.CreateToken("123", opts.JWTSecretKey)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		wantCode  codes.Code
+		setupMock func(mock *mocks.MockRepository)
+	}{
+		{
+			name:     "Case OK",
+			wantCode: codes.OK,
+			setupMock: func(mock *mocks.MockRepository) {
+				mock.EXPECT().
+					Get(gomock.Any(), "key_1").
+					Return("http://example.com", nil).
+					Times(1)
+			},
+		},
+		{
+			name:     "Case Not Found",
+			wantCode: codes.NotFound,
+			setupMock: func(mock *mocks.MockRepository) {
+				mock.EXPECT().
+					Get(gomock.Any(), "key_1").
+					Return("", repository.ErrNoRows).
+					Times(1)
+			},
+		},
+
+		{
+			name:     "Case Status Gone",
+			wantCode: codes.Unknown,
+			setupMock: func(mock *mocks.MockRepository) {
+				mock.EXPECT().
+					Get(gomock.Any(), "key_1").
+					Return("", repository.ErrStatusGone).
+					Times(1)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock(mockRepo)
+
+			md := metadata.Pairs("authorization", validToken)
+			grpcCtx := metadata.NewOutgoingContext(context.Background(), md)
+
+			req := pb.URLExpandRequest_builder{Id: "key_1"}.Build()
+			resp, err := client.ExpandURL(grpcCtx, req)
+
+			st, ok := status.FromError(err)
+			require.True(t, ok)
+			require.Equal(t, tt.wantCode, st.Code())
+
+			if tt.wantCode == codes.OK {
+				require.NotEmpty(t, resp.GetResult())
+			}
+		})
+	}
 }

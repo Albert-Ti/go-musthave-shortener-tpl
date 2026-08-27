@@ -40,7 +40,7 @@ func ExampleGetShortenURLs() {
 
 	_, _ = repo.Save(context.Background(), "key_1", "https://yandex.ru", "123")
 
-	svc := service.NewService(repo, config.NewOptions(config.WithBaseURL("http://localhost:8080")))
+	svc := service.NewService(repo, cfg)
 
 	req := httptest.NewRequestWithContext(
 		context.WithValue(context.Background(),

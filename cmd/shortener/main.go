@@ -191,7 +191,7 @@ func (s *shortener) grpcStart(svc *service.Service, auditor *audit.Auditor, opts
 		}
 		srv = grpc.NewServer(
 			grpc.ChainUnaryInterceptor(
-				interceptor.Auth(opts.JWTSecretKey),
+				interceptor.AuthGuard(opts.JWTSecretKey),
 				interceptor.Logging(),
 			),
 			grpc.Creds(transportCreds),
@@ -199,7 +199,7 @@ func (s *shortener) grpcStart(svc *service.Service, auditor *audit.Auditor, opts
 	} else {
 		srv = grpc.NewServer(
 			grpc.ChainUnaryInterceptor(
-				interceptor.Auth(opts.JWTSecretKey),
+				interceptor.AuthGuard(opts.JWTSecretKey),
 				interceptor.Logging(),
 			))
 	}
