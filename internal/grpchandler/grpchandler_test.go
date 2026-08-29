@@ -13,11 +13,9 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
-	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "github.com/Albert-Ti/go-musthave-shortener-tpl/pkg/proto"
 
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/config"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/grpchandler"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/interceptor"
@@ -29,7 +27,7 @@ import (
 
 const bufSize = 1024 * 1024
 
-func newTestGRPCServer(t *testing.T, svc *service.Service, auditor *audit.Auditor, opts *config.Options) pb.ShortenerServiceClient {
+func newTestGRPCServer(t *testing.T, svc *service.Service, opts *config.Options) pb.ShortenerServiceClient {
 	t.Helper()
 
 	lis := bufconn.Listen(bufSize)
@@ -40,7 +38,7 @@ func newTestGRPCServer(t *testing.T, svc *service.Service, auditor *audit.Audito
 			interceptor.Logging(),
 		),
 	)
-	gs := &grpchandler.GrpcServer{Server: srv, Svc: svc, Auditor: auditor}
+	gs := &grpchandler.GrpcServer{Server: srv, Svc: svc}
 	pb.RegisterShortenerServiceServer(srv, gs)
 
 	go func() {
@@ -72,13 +70,10 @@ func TestShortenURL(t *testing.T) {
 
 	opts := config.NewOptions(config.WithGRPCRunAddr("localhost:3200"))
 	svc := service.NewService(mockRepo, opts)
-	auditor, err := audit.NewAuditor("", "", 1, 1)
 
-	require.NoError(t, err)
+	client := newTestGRPCServer(t, svc, opts)
 
-	client := newTestGRPCServer(t, svc, auditor, opts)
-
-	validToken, err := token.CreateToken("123", opts.JWTSecretKey)
+	validToken, err := token.CreateToken("user-1", opts.JWTSecretKey)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -91,7 +86,7 @@ func TestShortenURL(t *testing.T) {
 			wantCode: codes.OK,
 			setupMock: func(mock *mocks.MockRepository) {
 				mockRepo.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://example.com", "123").
+					Save(gomock.Any(), gomock.Any(), "https://example.com", "user-1").
 					Return("key_1", nil).
 					Times(1)
 			},
@@ -102,7 +97,7 @@ func TestShortenURL(t *testing.T) {
 			wantCode: codes.AlreadyExists,
 			setupMock: func(mock *mocks.MockRepository) {
 				mockRepo.EXPECT().
-					Save(gomock.Any(), gomock.Any(), "https://example.com", "123").
+					Save(gomock.Any(), gomock.Any(), "https://example.com", "user-1").
 					Return("", repository.ErrConflict).
 					Times(1)
 			},
@@ -142,13 +137,10 @@ func TestListUserURLs(t *testing.T) {
 	)
 
 	svc := service.NewService(mockRepo, opts)
-	auditor, err := audit.NewAuditor("", "", 1, 1)
 
-	require.NoError(t, err)
+	client := newTestGRPCServer(t, svc, opts)
 
-	client := newTestGRPCServer(t, svc, auditor, opts)
-
-	validToken, err := token.CreateToken("123", opts.JWTSecretKey)
+	validToken, err := token.CreateToken("user-1", opts.JWTSecretKey)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -161,7 +153,7 @@ func TestListUserURLs(t *testing.T) {
 			wantCode: codes.OK,
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					GetAll(gomock.Any(), "123").
+					GetAll(gomock.Any(), "user-1").
 					Return([]map[string]string{{
 						"key": "http://localhost:8080/key_1",
 						"url": "https://google.com",
@@ -174,7 +166,7 @@ func TestListUserURLs(t *testing.T) {
 			wantCode: codes.NotFound,
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					GetAll(gomock.Any(), "123").
+					GetAll(gomock.Any(), "user-1").
 					Times(1)
 			},
 		},
@@ -186,7 +178,7 @@ func TestListUserURLs(t *testing.T) {
 
 			md := metadata.Pairs("authorization", validToken)
 			grpcCtx := metadata.NewOutgoingContext(context.Background(), md)
-			resp, err := client.ListUserURLs(grpcCtx, &emptypb.Empty{})
+			resp, err := client.ListUserURLs(grpcCtx, &pb.UserURLsRequest{})
 
 			st, ok := status.FromError(err)
 			require.True(t, ok)
@@ -209,13 +201,10 @@ func TestExpandURL(t *testing.T) {
 	)
 
 	svc := service.NewService(mockRepo, opts)
-	auditor, err := audit.NewAuditor("", "", 1, 1)
 
-	require.NoError(t, err)
+	client := newTestGRPCServer(t, svc, opts)
 
-	client := newTestGRPCServer(t, svc, auditor, opts)
-
-	validToken, err := token.CreateToken("123", opts.JWTSecretKey)
+	validToken, err := token.CreateToken("user-1", opts.JWTSecretKey)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -246,7 +235,7 @@ func TestExpandURL(t *testing.T) {
 
 		{
 			name:     "Case Status Gone",
-			wantCode: codes.Unknown,
+			wantCode: codes.FailedPrecondition,
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
 					Get(gomock.Any(), "key_1").

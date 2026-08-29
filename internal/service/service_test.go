@@ -29,7 +29,7 @@ func BenchmarkBatchSave(b *testing.B) {
 			ctrl := gomock.NewController(b)
 			mockRepo := mocks.NewMockRepository(ctrl)
 
-			ctx := context.WithValue(context.Background(), middleware.UserIDKey, "user-1")
+			ctx := middleware.SetAuthUserID(context.Background(), "user-1")
 			cfg := config.NewOptions(config.WithBaseURL("http://localhost:8080"))
 
 			svc := NewService(mockRepo, cfg)

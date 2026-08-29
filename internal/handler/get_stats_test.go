@@ -69,11 +69,7 @@ func TestGetStats(t *testing.T) {
 
 			svc := service.NewService(mockRepo, cfg)
 
-			ctx := context.WithValue(
-				context.Background(),
-				middleware.UserIDKey,
-				"123",
-			)
+			ctx := middleware.SetAuthUserID(context.Background(), "user-1")
 			req := httptest.NewRequestWithContext(ctx, tt.method, "/api/internal/stats", nil)
 			rr := httptest.NewRecorder()
 			req.Header.Set("X-Real-IP", tt.xRealIP)

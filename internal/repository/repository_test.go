@@ -16,7 +16,7 @@ func TestRepository(t *testing.T) {
 	t.Run("file storage memento rollback on encode error", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		userID := "user-1"
-		ctx := context.WithValue(context.Background(), middleware.UserIDKey, userID)
+		ctx := middleware.SetAuthUserID(context.Background(), userID)
 
 		file, err := os.OpenFile(
 			filepath.Join(tmpDir, "test.json"),

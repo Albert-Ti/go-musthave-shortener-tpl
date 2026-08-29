@@ -20,6 +20,7 @@ import (
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/grpchandler"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/handler"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/interceptor"
+	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	myMiddleware "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
@@ -130,12 +131,18 @@ type shortener struct {
 }
 
 func (s *shortener) httpStart(svc *service.Service, auditor *audit.Auditor, opts *config.Options) {
+	var counter *middleware.UserCounter
+
+	if opts.DatabaseDSN == "" {
+		counter = middleware.NewUserCounter()
+	}
+
 	r := chi.NewRouter()
 	r.Use(chiMiddleware.RealIP)
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(myMiddleware.WithLogging)
 	r.Use(myMiddleware.GzipCompress)
-	r.Use(myMiddleware.AuthGuard(opts.JWTSecretKey, opts.DatabaseDSN == ""))
+	r.Use(myMiddleware.AuthGuard(opts.JWTSecretKey, counter))
 
 	r.Post("/", handler.CreateShortenURL(svc, auditor, opts.BaseURL))
 	r.Get("/{id}", handler.RedirectByKeyURL(svc, auditor, opts.BaseURL))
@@ -155,13 +162,13 @@ func (s *shortener) httpStart(svc *service.Service, auditor *audit.Auditor, opts
 	var errSrv error
 
 	if opts.EnableHTTPS {
-		host = "https://" + opts.RunAddr
 		if !cert.IsCertValid() {
 			slog.Info("certificate missing or expired, generating a new one")
 			if errCert := cert.CreateCert(); errCert != nil {
 				panic(errCert)
 			}
 		}
+		host = "https://" + opts.RunAddr
 		slog.Info("running server", "host", host)
 		errSrv = s.http.ListenAndServeTLS("cert.pem", "private.pem")
 	} else {
@@ -183,7 +190,13 @@ func (s *shortener) grpcStart(svc *service.Service, auditor *audit.Auditor, opts
 	var srv *grpc.Server
 	host := "http://" + opts.GRPCRunAddr
 
-	if opts.EnableHTTPS {
+	if !opts.EnableHTTPS {
+		if !cert.IsCertValid() {
+			slog.Info("certificate missing or expired, generating a new one")
+			if errCert := cert.CreateCert(); errCert != nil {
+				panic(errCert)
+			}
+		}
 		host = "https://" + opts.GRPCRunAddr
 		transportCreds, err := credentials.NewServerTLSFromFile("cert.pem", "private.pem")
 		if err != nil {
@@ -204,16 +217,10 @@ func (s *shortener) grpcStart(svc *service.Service, auditor *audit.Auditor, opts
 			))
 	}
 
-	var schema = "http://"
-	if !opts.EnableHTTPS {
-		schema = "https://"
-	}
-
 	s.grpc = &grpchandler.GrpcServer{
 		Server:  srv,
 		Svc:     svc,
-		Auditor: auditor,
-		BaseURL: schema + opts.GRPCRunAddr,
+		BaseURL: host,
 	}
 
 	pb.RegisterShortenerServiceServer(srv, s.grpc)

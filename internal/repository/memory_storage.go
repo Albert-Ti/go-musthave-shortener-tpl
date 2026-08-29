@@ -10,7 +10,8 @@ import (
 )
 
 type memoryStorage struct {
-	urls []map[string]string
+	urls  []map[string]string
+	users *middleware.UserCounter
 }
 
 func NewMemoryStorage() (*memoryStorage, error) {
@@ -41,7 +42,7 @@ func (ms *memoryStorage) GetAll(ctx context.Context, userID string) ([]map[strin
 func (ms *memoryStorage) GetStats(ctx context.Context) (model.StatsResp, error) {
 	return model.StatsResp{
 		URLs:  len(ms.urls),
-		Users: middleware.GetCountUsers(),
+		Users: ms.users.Count(),
 	}, nil
 }
 

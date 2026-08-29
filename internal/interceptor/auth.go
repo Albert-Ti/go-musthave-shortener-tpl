@@ -53,7 +53,7 @@ func AuthGuard(secretKey string) grpc.UnaryServerInterceptor {
 
 			_ = grpc.SetHeader(ctx, metadata.Pairs("authorization", newToken))
 		}
-		ctx = context.WithValue(ctx, middleware.UserIDKey, authorizedUserID)
+		ctx = middleware.SetAuthUserID(ctx, authorizedUserID)
 		return handler(ctx, req)
 	}
 }

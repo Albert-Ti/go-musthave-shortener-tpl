@@ -17,6 +17,7 @@ type fileStorage struct {
 	file    *os.File
 	encoder *json.Encoder
 	urls    []map[string]string
+	users   *middleware.UserCounter
 }
 
 type filRecord struct {
@@ -81,7 +82,7 @@ func (fs *fileStorage) GetAll(ctx context.Context, userID string) ([]map[string]
 func (fs *fileStorage) GetStats(ctx context.Context) (model.StatsResp, error) {
 	return model.StatsResp{
 		URLs:  len(fs.urls),
-		Users: middleware.GetCountUsers(),
+		Users: fs.users.Count(),
 	}, nil
 }
 

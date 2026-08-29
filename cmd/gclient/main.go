@@ -10,9 +10,8 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "github.com/Albert-Ti/go-musthave-shortener-tpl/pkg/proto"
 )
@@ -21,11 +20,14 @@ var currentToken string
 
 func main() {
 	ctx := context.Background()
-
+	transportCreds, err := credentials.NewClientTLSFromFile("cert.pem", "")
+	if err != nil {
+		panic(err)
+	}
 	// Устанавливаем соединение с сервером
 	conn, err := grpc.NewClient(
-		`:3200`,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		"127.0.0.1:3200",
+		grpc.WithTransportCredentials(transportCreds),
 		grpc.WithChainUnaryInterceptor(clientInterceptor),
 	)
 
@@ -39,27 +41,29 @@ func main() {
 	resp, err := c.ShortenURL(ctx, pb.URLShortenRequest_builder{
 		Url: "https://example.com",
 	}.Build())
-
-	fmt.Println("ShortenURL result", resp.GetResult())
+	if err == nil {
+		fmt.Println("ShortenURL result", resp.GetResult())
+	} else {
+		fmt.Printf("ShortenURL error: %v", err)
+	}
 
 	md := metadata.Pairs("authorization", currentToken)
 	grpcCtx := metadata.NewOutgoingContext(context.Background(), md)
 
-	resp2, err := c.ListUserURLs(grpcCtx, &emptypb.Empty{})
-
-	fmt.Println("ListUserURLs result", resp2.GetUrl())
+	resp2, err := c.ListUserURLs(grpcCtx, &pb.UserURLsRequest{})
+	if err == nil {
+		fmt.Println("ListUserURLs result", resp2.GetUrl())
+	} else {
+		fmt.Printf("ListUserURLs error: %v", err)
+	}
 
 	arr := strings.Split(resp.GetResult(), "/")
 	id := arr[len(arr)-1]
-
-	resp3, err := c.ExpandURL(grpcCtx, pb.URLExpandRequest_builder{
-		Id: id,
-	}.Build())
-
-	fmt.Println("ExpandURL result", resp3.GetResult())
-
-	if err != nil {
-		fmt.Printf("ошибка при получении списка ссылок пользователя: %v", err)
+	resp3, err := c.ExpandURL(grpcCtx, pb.URLExpandRequest_builder{Id: id}.Build())
+	if err == nil {
+		fmt.Println("ExpandURL result", resp3.GetResult())
+	} else {
+		fmt.Printf("ExpandURL error: %v", err)
 	}
 }
 

@@ -167,4 +167,4 @@ protoc:
   --go-grpc_out=. --go-grpc_opt=paths=source_relative \
   --go_opt=default_api_level=API_OPAQUE \
 	-I . \
-  pkg/proto/grpc.proto 
+  pkg/proto/base.proto 

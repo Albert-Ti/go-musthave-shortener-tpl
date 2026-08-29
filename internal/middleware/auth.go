@@ -11,12 +11,10 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type UserIDType string
+type userIDType string
 
 // UserIDKey — ключ контекста.
-const UserIDKey UserIDType = "userID"
-
-var countUsers map[string]struct{}
+const userIDKey userIDType = "userID"
 
 // createCookie создаёт HttpOnly-cookie с заданными именем и значением.
 func createCookie(name string, value string) *http.Cookie {
@@ -43,10 +41,8 @@ func createCookie(name string, value string) *http.Cookie {
 //
 //	r := chi.NewRouter()
 //	r.Use(middleware.AuthGuard(cfg.JWTSecretKey))
-func AuthGuard(secretKey string, isNotPostgres bool) func(http.Handler) http.Handler {
-	if isNotPostgres {
-		countUsers = map[string]struct{}{}
-	}
+func AuthGuard(secretKey string, counter *UserCounter) func(http.Handler) http.Handler {
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqCookie, err := r.Cookie("token")
@@ -84,13 +80,11 @@ func AuthGuard(secretKey string, isNotPostgres bool) func(http.Handler) http.Han
 				authorizedUserID = claims.UserID
 			}
 
-			if isNotPostgres {
-				if _, ok := countUsers[authorizedUserID]; !ok {
-					countUsers[authorizedUserID] = struct{}{}
-				}
+			if counter != nil {
+				counter.Add(authorizedUserID)
 			}
 
-			ctx := context.WithValue(r.Context(), UserIDKey, authorizedUserID)
+			ctx := SetAuthUserID(r.Context(), authorizedUserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -98,13 +92,13 @@ func AuthGuard(secretKey string, isNotPostgres bool) func(http.Handler) http.Han
 
 // GetAuthUserID извлекает идентификатор пользователя.
 func GetAuthUserID(ctx context.Context) (string, error) {
-	userID, ok := ctx.Value(UserIDKey).(string)
+	userID, ok := ctx.Value(userIDKey).(string)
 	if !ok || userID == "" {
 		return "", errors.New("user id not found")
 	}
 	return userID, nil
 }
 
-func GetCountUsers() int {
-	return len(countUsers)
+func SetAuthUserID(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, userIDKey, userID)
 }

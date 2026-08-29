@@ -53,8 +53,7 @@ func ExampleCreateShortenURLJSON() {
 	reqBody, _ := json.Marshal(model.JSONReq{URL: "https://yandex.ru"})
 
 	req := httptest.NewRequestWithContext(
-		context.WithValue(context.Background(),
-			middleware.UserIDKey, "123"),
+		middleware.SetAuthUserID(context.Background(), "user-1"),
 		http.MethodPost,
 		"/api/shorten",
 		bytes.NewReader(reqBody),
@@ -89,7 +88,7 @@ func TestCreateShortURLJSON(t *testing.T) {
 	auditor, _ := audit.NewAuditor("", "", 20, 100)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), middleware.UserIDKey, "123")
+		ctx := middleware.SetAuthUserID(context.Background(), "user-1")
 		r = r.WithContext(ctx)
 		handler.CreateShortenURLJSON(svc, auditor, cfg.BaseURL)(w, r)
 	})

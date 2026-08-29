@@ -48,8 +48,7 @@ func ExampleRedirectByKeyURL() {
 	auditor, _ := audit.NewAuditor("", "", 20, 100)
 
 	req := httptest.NewRequestWithContext(
-		context.WithValue(context.Background(),
-			middleware.UserIDKey, "user-1"),
+		middleware.SetAuthUserID(context.Background(), "user-1"),
 		http.MethodGet,
 		"/abc123",
 		nil,
@@ -147,8 +146,7 @@ func TestRedirectByKeyURL(t *testing.T) {
 			svc := service.NewService(mockRepo, cfg)
 
 			r := httptest.NewRequestWithContext(
-				context.WithValue(context.Background(),
-					middleware.UserIDKey, "user-1"),
+				middleware.SetAuthUserID(context.Background(), "user-1"),
 				tt.want.method,
 				tt.endpoint,
 				nil,

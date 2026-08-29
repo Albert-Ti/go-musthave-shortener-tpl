@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/audit"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/middleware"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/repository"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/service"
@@ -16,13 +15,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type GrpcServer struct {
 	pb.UnimplementedShortenerServiceServer
 	Server  *grpc.Server
-	Auditor *audit.Auditor
 	Svc     *service.Service
 	BaseURL string
 }
@@ -57,7 +54,7 @@ func (g *GrpcServer) ExpandURL(ctx context.Context, in *pb.URLExpandRequest) (*p
 			return nil, status.Error(codes.NotFound, "not found")
 		}
 		if errors.Is(err, repository.ErrStatusGone) {
-			return nil, status.Error(codes.Unknown, "status gone")
+			return nil, status.Error(codes.FailedPrecondition, "status gone")
 		}
 		return nil, status.Error(codes.Internal, "internal server")
 	}
@@ -69,7 +66,7 @@ func (g *GrpcServer) ExpandURL(ctx context.Context, in *pb.URLExpandRequest) (*p
 	return &response, nil
 }
 
-func (g *GrpcServer) ListUserURLs(ctx context.Context, empty *emptypb.Empty) (*pb.UserURLsResponse, error) {
+func (g *GrpcServer) ListUserURLs(ctx context.Context, in *pb.UserURLsRequest) (*pb.UserURLsResponse, error) {
 	userID, err := middleware.GetAuthUserID(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")

@@ -45,8 +45,7 @@ func ExampleDeleteShortenURLs() {
 	body, _ := json.Marshal([]string{"key_1", "key_2"})
 
 	req := httptest.NewRequestWithContext(
-		context.WithValue(context.Background(),
-			middleware.UserIDKey, "123"),
+		middleware.SetAuthUserID(context.Background(), "user-1"),
 		http.MethodDelete,
 		"/api/user/urls",
 		bytes.NewReader(body),
@@ -81,7 +80,7 @@ func TestDeleteShortenURLs(t *testing.T) {
 					BatchDelete(
 						gomock.Any(),
 						[]string{"key_1", "key_2"},
-						"123",
+						"user-1",
 					).
 					Return(nil).
 					AnyTimes()
@@ -126,11 +125,7 @@ func TestDeleteShortenURLs(t *testing.T) {
 				bodyBytes, _ = json.Marshal(v)
 			}
 
-			ctx := context.WithValue(
-				context.Background(),
-				middleware.UserIDKey,
-				"123",
-			)
+			ctx := middleware.SetAuthUserID(context.Background(), "user-1")
 
 			req := httptest.NewRequestWithContext(
 				ctx,
