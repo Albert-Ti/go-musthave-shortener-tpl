@@ -20,6 +20,7 @@ const (
 // generate:reset
 type Options struct {
 	RunAddr         string
+	GRPCRunAddr     string
 	BaseURL         string
 	FileStoragePath string
 	DatabaseDSN     string
@@ -29,6 +30,7 @@ type Options struct {
 	Mode            string
 	EnableHTTPS     bool
 	ConfigFile      string
+	TrustedSubnet   string
 }
 
 // FileConfig настройки приложения специально под JSON,
@@ -39,6 +41,7 @@ type FileConfig struct {
 	FileStoragePath string `json:"file_storage_path"`
 	DatabaseDSN     string `json:"database_dsn"`
 	EnableHTTPS     *bool  `json:"enable_https"`
+	TrustedSubnet   string `json:"trusted_subnet"`
 }
 
 // NewOptions создаёт Options со значениями по умолчанию и применяет
@@ -47,6 +50,7 @@ func NewOptions(opts ...func(*Options)) *Options {
 	o := &Options{
 		RunAddr:      "localhost:8080",
 		BaseURL:      "http://localhost:8080",
+		GRPCRunAddr:  "localhost:3200",
 		JWTSecretKey: "jwt_secret_key",
 		Mode:         ModeDev,
 	}
@@ -69,8 +73,9 @@ func Build() (*Options, error) {
 	fs.StringVar(&raw.DatabaseDSN, "d", "", "строка подключения к БД, например: -d=\"postgres://user:pass@localhost:5432/shortener\"")
 	fs.StringVar(&raw.AuditFile, "audit-file", "", "путь к файлу-приёмнику аудита, например: -audit-file=audit.log")
 	fs.StringVar(&raw.AuditURL, "audit-url", "", "URL удалённого сервера-приёмника аудита, например: -audit-url=http://localhost:9000/audit")
-	fs.BoolVar(&raw.EnableHTTPS, "s", true, "включить HTTPS (true/false), например: -s=true | 1")
+	fs.BoolVar(&raw.EnableHTTPS, "s", false, "включить HTTPS (true/false), например: -s=true | 1")
 	fs.StringVar(&raw.ConfigFile, "c", "", "путь к файлу конфигурации в формате JSON, например: -c=config.json")
+	fs.StringVar(&raw.TrustedSubnet, "t", "", "строковое представление бесклассовой адресации (CIDR)")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, err
@@ -109,11 +114,12 @@ func Build() (*Options, error) {
 	}
 	opts.FileStoragePath = filePath
 	opts.DatabaseDSN = dsn
+	opts.TrustedSubnet = pickString(explicit["t"], "TRUSTED_SUBNET", raw.TrustedSubnet, fc.TrustedSubnet)
 
 	return opts, nil
 }
 
-// WithRunAddr задаёт адрес и порт, на которых запускается сервер.
+// WithRunAddr задаёт адрес и порт, на которых запускается сервер HTTP.
 func WithRunAddr(v string) func(*Options) { return func(o *Options) { o.RunAddr = v } }
 
 // WithBaseURL задаёт базовый URL, используемый при формировании коротких ссылок.
@@ -142,6 +148,12 @@ func WithEnableHTTPS(v bool) func(*Options) { return func(o *Options) { o.Enable
 
 // WithConfigFile задаёт конфигурацию приложения с помощью файла config.JSON.
 func WithConfigFile(v string) func(*Options) { return func(o *Options) { o.ConfigFile = v } }
+
+// WithTrustedSubnet задаёт строковое представление бесклассовой адресации (CIDR).
+func WithTrustedSubnet(v string) func(*Options) { return func(o *Options) { o.TrustedSubnet = v } }
+
+// WithGRPCRunAddr задаёт адрес и порт, на которых запускается сервер GRPC.
+func WithGRPCRunAddr(v string) func(*Options) { return func(o *Options) { o.GRPCRunAddr = v } }
 
 func pickString(explicitFlag bool, envStr string, flagVal string, fileVal string) string {
 	if explicitFlag {

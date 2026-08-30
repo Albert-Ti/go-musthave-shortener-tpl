@@ -14,6 +14,7 @@ import (
 type Repository interface {
 	Get(ctx context.Context, key string) (string, error)
 	GetAll(ctx context.Context, userID string) ([]map[string]string, error)
+	GetStats(ctx context.Context) (model.StatsResp, error)
 	Save(ctx context.Context, key string, url string, userID string) (string, error)
 	BatchSave(ctx context.Context, batch []model.BatchReq, baseURL string, userID string) ([]model.BatchResp, error)
 	BatchDelete(ctx context.Context, keys []string, userID string) error

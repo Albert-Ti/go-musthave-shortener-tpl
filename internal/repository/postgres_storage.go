@@ -88,6 +88,34 @@ func (ps *PostgresStorage) GetAll(ctx context.Context, userID string) ([]map[str
 	return results, nil
 }
 
+func (ps *PostgresStorage) GetStats(ctx context.Context) (model.StatsResp, error) {
+	queryStr := `
+	SELECT 
+    COUNT(DISTINCT user_id) AS users,
+    COUNT(DISTINCT key) AS urls
+	FROM shorten_url`
+
+	rows, err := ps.pool.Query(ctx, queryStr)
+
+	if err != nil {
+		return model.StatsResp{}, err
+	}
+	defer rows.Close()
+
+	var users, urls int
+	for rows.Next() {
+		err := rows.Scan(&users, &urls)
+		if err != nil {
+			return model.StatsResp{}, err
+		}
+	}
+
+	return model.StatsResp{
+		URLs:  urls,
+		Users: users,
+	}, nil
+}
+
 func (ps *PostgresStorage) Save(ctx context.Context, key string, url string, userID string) (string, error) {
 
 	queryStr := `

@@ -61,7 +61,7 @@ func WithLogging(h http.Handler) http.Handler {
 
 		switch {
 		case responseData.status >= 500:
-			slog.Error("",
+			slog.Error("HTTP",
 				slog.String("method", r.Method),
 				slog.String("uri", r.RequestURI),
 				slog.Duration("duration", duration),
@@ -69,7 +69,7 @@ func WithLogging(h http.Handler) http.Handler {
 				slog.Int("size", responseData.size),
 			)
 		case responseData.status >= 400:
-			slog.Warn("",
+			slog.Warn("HTTP",
 				slog.String("method", r.Method),
 				slog.String("uri", r.RequestURI),
 				slog.Duration("duration", duration),
@@ -77,7 +77,7 @@ func WithLogging(h http.Handler) http.Handler {
 				slog.Int("size", responseData.size),
 			)
 		default:
-			slog.Info("",
+			slog.Info("HTTP",
 				slog.String("method", r.Method),
 				slog.String("uri", r.RequestURI),
 				slog.Duration("duration", duration),

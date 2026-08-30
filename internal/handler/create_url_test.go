@@ -47,8 +47,7 @@ func ExampleCreateShortenURL() {
 	defer utils.GenerateMockUUID()()
 
 	req := httptest.NewRequestWithContext(
-		context.WithValue(context.Background(),
-			middleware.UserIDKey, "123"),
+		middleware.SetAuthUserID(context.Background(), "user-1"),
 		http.MethodPost,
 		"/",
 		strings.NewReader("https://yandex.ru"),
@@ -86,7 +85,7 @@ func TestCreateShortURL(t *testing.T) {
 	auditor, _ := audit.NewAuditor("", "", 20, 100)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), middleware.UserIDKey, "123")
+		ctx := middleware.SetAuthUserID(context.Background(), "user-1")
 		r = r.WithContext(ctx)
 		handler.CreateShortenURL(svc, auditor, cfg.BaseURL)(w, r)
 	})

@@ -39,8 +39,11 @@ run-pg-ldflags:
 	go run -ldflags "-X main.buildVersion=v1.0.0 -X main.buildDate=$(BUILD_DATE) -X 'main.buildCommit=$(BUILD_COMMIT)'" \
 		$(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" --audit-file="$(AUDIT_FILE)"
 
-run-https:
+run-tls:
 	go run $(RACE_FLAG) $(RUN_PATH) -s="true"
+
+run-pg-subnet:
+	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" -t="192.168.1.0/24"
 
 run-pg-cfg:
 	go run $(RACE_FLAG) $(RUN_PATH) -d="postgres://postgres:postgres@localhost:5432/db?sslmode=disable" -c="config.json"
@@ -55,7 +58,7 @@ ping:
 
 # Запуск всех тестов
 test:
-	go $(RACE_FLAG) test ./...
+	go $(RACE_FLAG) test ./... -v
 
 # Запуск всех бенчмарк тестов
 test-bench:
@@ -156,3 +159,12 @@ analyze-staticcheck:
 # Кодогенерация - просканирует все файлы текущей директории и запустит операции, указанные в комментариях //go:generate.
 go-generate:
 	go generate ./...
+
+
+protoc:
+	protoc \
+  --go_out=. --go_opt=paths=source_relative \
+  --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+  --go_opt=default_api_level=API_OPAQUE \
+	-I . \
+  pkg/proto/base.proto 

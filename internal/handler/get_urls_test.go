@@ -38,13 +38,12 @@ func ExampleGetShortenURLs() {
 		panic(err)
 	}
 
-	_, _ = repo.Save(context.Background(), "key_1", "https://yandex.ru", "123")
+	_, _ = repo.Save(context.Background(), "key_1", "https://yandex.ru", "user-1")
 
-	svc := service.NewService(repo, config.NewOptions(config.WithBaseURL("http://localhost:8080")))
+	svc := service.NewService(repo, cfg)
 
 	req := httptest.NewRequestWithContext(
-		context.WithValue(context.Background(),
-			middleware.UserIDKey, "123"),
+		middleware.SetAuthUserID(context.Background(), "user-1"),
 		http.MethodGet,
 		"/api/user/urls",
 		nil,
@@ -90,7 +89,7 @@ func TestGetShortenURLs(t *testing.T) {
 				}
 
 				mock.EXPECT().
-					GetAll(gomock.Any(), "123").
+					GetAll(gomock.Any(), "user-1").
 					Return(expectedURLs, nil).Times(1)
 			},
 		},
@@ -102,7 +101,7 @@ func TestGetShortenURLs(t *testing.T) {
 			statusCode:  http.StatusNoContent,
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					GetAll(gomock.Any(), "123").
+					GetAll(gomock.Any(), "user-1").
 					Return(nil, nil).Times(1)
 			},
 		},
@@ -129,11 +128,7 @@ func TestGetShortenURLs(t *testing.T) {
 
 			svc := service.NewService(mockRepo, cfg)
 
-			ctx := context.WithValue(
-				context.Background(),
-				middleware.UserIDKey,
-				"123",
-			)
+			ctx := middleware.SetAuthUserID(context.Background(), "user-1")
 			req := httptest.NewRequestWithContext(ctx, tt.method, "/api/user/urls", nil)
 
 			rr := httptest.NewRecorder()

@@ -2,14 +2,6 @@
 
 package middleware
 
-func (t *MyCustomClaims) Reset() {
-	if t == nil {
-		return
-	}
-
-	t.UserID = ""
-}
-
 func (t *responseData) Reset() {
 	if t == nil {
 		return

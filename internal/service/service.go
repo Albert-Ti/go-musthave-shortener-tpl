@@ -40,6 +40,10 @@ func (s *Service) GetAll(ctx context.Context, userID string) ([]model.GetAllResp
 	return results, nil
 }
 
+func (s *Service) GetStats(ctx context.Context) (model.StatsResp, error) {
+	return s.repository.GetStats(ctx)
+}
+
 func (s *Service) Save(ctx context.Context, url string, userID string) (string, bool, error) {
 	key := utils.GenerateUUID()
 

@@ -5,38 +5,16 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"time"
 
+	mytoken "github.com/Albert-Ti/go-musthave-shortener-tpl/internal/token"
 	"github.com/Albert-Ti/go-musthave-shortener-tpl/internal/utils"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type UserIDType string
+type userIDType string
 
 // UserIDKey — ключ контекста.
-const UserIDKey UserIDType = "userID"
-
-// MyCustomClaims расширяет стандартные claims jwt.RegisteredClaims полем UserID,
-// чтобы связать выданный токен с конкретным пользователем сервиса.
-// generate:reset
-type MyCustomClaims struct {
-	jwt.RegisteredClaims
-	UserID string
-}
-
-// createToken подписывает новый JWT алгоритмом HS256 с claim UserID и сроком.
-func createToken(userID string, secretKey string) (string, error) {
-	t := jwt.New(jwt.SigningMethodHS256)
-
-	t.Claims = &MyCustomClaims{
-		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-		},
-		userID,
-	}
-
-	return t.SignedString([]byte(secretKey))
-}
+const userIDKey userIDType = "userID"
 
 // createCookie создаёт HttpOnly-cookie с заданными именем и значением.
 func createCookie(name string, value string) *http.Cookie {
@@ -63,7 +41,8 @@ func createCookie(name string, value string) *http.Cookie {
 //
 //	r := chi.NewRouter()
 //	r.Use(middleware.AuthGuard(cfg.JWTSecretKey))
-func AuthGuard(secretKey string) func(http.Handler) http.Handler {
+func AuthGuard(secretKey string, counter *UserCounter) func(http.Handler) http.Handler {
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqCookie, err := r.Cookie("token")
@@ -73,7 +52,7 @@ func AuthGuard(secretKey string) func(http.Handler) http.Handler {
 				slog.Error("cookie error", "error", err)
 				authorizedUserID = utils.GenerateUUID()
 
-				tokenString, err := createToken(authorizedUserID, secretKey)
+				tokenString, err := mytoken.CreateToken(authorizedUserID, secretKey)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -81,8 +60,9 @@ func AuthGuard(secretKey string) func(http.Handler) http.Handler {
 
 				newCookie := createCookie("token", tokenString)
 				http.SetCookie(w, newCookie)
+
 			} else {
-				claims := &MyCustomClaims{}
+				claims := &mytoken.MyCustomClaims{}
 
 				token, err := jwt.ParseWithClaims(
 					reqCookie.Value,
@@ -100,7 +80,11 @@ func AuthGuard(secretKey string) func(http.Handler) http.Handler {
 				authorizedUserID = claims.UserID
 			}
 
-			ctx := context.WithValue(r.Context(), UserIDKey, authorizedUserID)
+			if counter != nil {
+				counter.Add(authorizedUserID)
+			}
+
+			ctx := SetAuthUserID(r.Context(), authorizedUserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -108,9 +92,13 @@ func AuthGuard(secretKey string) func(http.Handler) http.Handler {
 
 // GetAuthUserID извлекает идентификатор пользователя.
 func GetAuthUserID(ctx context.Context) (string, error) {
-	userID, ok := ctx.Value(UserIDKey).(string)
+	userID, ok := ctx.Value(userIDKey).(string)
 	if !ok || userID == "" {
 		return "", errors.New("user id not found")
 	}
 	return userID, nil
+}
+
+func SetAuthUserID(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, userIDKey, userID)
 }

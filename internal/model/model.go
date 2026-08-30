@@ -22,3 +22,8 @@ type GetAllResp struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
 }
+
+type StatsResp struct {
+	URLs  int `json:"urls"`
+	Users int `json:"users"`
+}

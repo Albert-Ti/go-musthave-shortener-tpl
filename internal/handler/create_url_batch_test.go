@@ -53,8 +53,7 @@ func ExampleCreateShortenURLBatch() {
 	})
 
 	req := httptest.NewRequestWithContext(
-		context.WithValue(context.Background(),
-			middleware.UserIDKey, "123"),
+		middleware.SetAuthUserID(context.Background(), "user-1"),
 		http.MethodPost,
 		"/api/shorten/batch",
 		bytes.NewReader(reqBody),
@@ -97,7 +96,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					BatchSave(gomock.Any(), gomock.Any(), gomock.Any(), "123").
+					BatchSave(gomock.Any(), gomock.Any(), gomock.Any(), "user-1").
 					Return([]model.BatchResp{
 						{ShortURL: "http://localhost:8080/key_1", CorrelationID: "ID1"},
 						{ShortURL: "http://localhost:8080/key_2", CorrelationID: "ID2"},
@@ -119,7 +118,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			},
 			setupMock: func(mock *mocks.MockRepository) {
 				mock.EXPECT().
-					BatchSave(gomock.Any(), gomock.Any(), gomock.Any(), "123").
+					BatchSave(gomock.Any(), gomock.Any(), gomock.Any(), "user-1").
 					Return(nil, errors.New("database error")).
 					Times(1)
 			},
@@ -152,7 +151,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			setupMock: func(mock *mocks.MockRepository) {
 				// Никаких вызовов не должно быть
 				mock.EXPECT().
-					BatchSave(gomock.Any(), gomock.Any(), gomock.Any(), "123").
+					BatchSave(gomock.Any(), gomock.Any(), gomock.Any(), "user-1").
 					Times(0)
 			},
 			statusCode: http.StatusNoContent,
@@ -177,8 +176,7 @@ func TestCreateShortenURLBatch(t *testing.T) {
 			require.NoError(t, err)
 
 			req := httptest.NewRequestWithContext(
-				context.WithValue(context.Background(),
-					middleware.UserIDKey, "123"),
+				middleware.SetAuthUserID(context.Background(), "user-1"),
 				tt.method,
 				"/api/shorten/batch",
 				bytes.NewReader(bodyBytes),
